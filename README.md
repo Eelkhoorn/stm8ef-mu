@@ -10,8 +10,9 @@ This repository provides some files that enables muforth (https://github.com/nim
 * run make BOARD=MINDEV flash or make BOARD=W1209-FD flash
 * make a sym link of stm8ef/out/BOARD/forth.rst in muforth/mu/tmp
 * run tmp/kernel.sh words to update the words file
-* hook up an uart interface device, make sure muforth/mu/serial-target points to your uart device 
-* start muforth from muforth/mu:  
+* hook up an uart interface device, make sure muforth/mu/serial-target points to your uart device
+* make a sym link from muforth/src/muforth in muforth/mu/tmp 
+* start muforth from muforth/mu/tmp:  
        ./muforth -f target/STM8/build.mu4 -f aliases            for MINDEV  
        ./muforth -d W1209 -f target/STM8/build.mu4 -f aliases   for W1209-FD  
 * in muforth: chat starts uart communication with the target
