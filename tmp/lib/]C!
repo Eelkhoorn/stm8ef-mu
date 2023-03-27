@@ -1,0 +1,6 @@
+meta
+
+--  Enable the compile mode and compile the code for "mov addr,#c"
+: ]C! ( c addr -- )
+     $35 \m c, swap \m c, \m , \m ]
+;

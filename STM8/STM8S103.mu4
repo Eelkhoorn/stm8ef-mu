@@ -1,0 +1,29 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+( Definitions for STM8S103.)
+decimal
+
+#64 constant /page
+
+( IMPORTANT: these values are hardcoded in forth.asm)
+.ifdef W1209
+#57600
+.else
+#115200
+.then
+constant baud-rate
+"340 constant @flashbuf  ( in chat.asm that is included in forth.asm)
+
+ld tmp/words
+
+( First, a few defining words, which we'll use to load the "equates".)
+: equ     ( offset)  current preserve  .equates. definitions  constant ;
+: vector  ( offset)  equ ;
+: reg     ( offset)  equ ;
+: |  \ -- ;  ( | ignores the bit-fields that follow each register name)
+: aka   .equates. chain' execute  equ ;  ( for making synonyms)
+
+
+ld target/STM8/STM8S103.efr

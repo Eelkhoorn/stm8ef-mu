@@ -1,0 +1,125 @@
+loading PCB timer pdi, don't forget to flash the interrupt vectors!
+
+comment ===
+Part of p+ timer program for W1209-FD with MOC/TRIAC stage
+for swithing 230V AC
+These are the interrupt routines for port PD6 and timer1
+and initialisation, to be placed in boot vector
+then it starts counting down seconds
+===
+
+( Usage: see bottom. )
+
+ld tmp/lib/]B!
+ld tmp/lib/]C!
+
+__meta
+
+flash
+
+CVAR 1tr		( first timer interrupt )
+CVAR 2tr		( second -or more- timer interrupt )
+
+: t1r  ( -- )			( tim1 reset )
+  [ 0 TIM1_CR1 0 ]B!	( stop timer )
+  [ 0 TIM1_SR1 0 ]B!	( reset interrupt flag )
+;
+
+: t1s [ 1 TIM1_CR1 0 ]B! ;		( tim1 set )
+
+: SO  ( -- )	( reset flags after switch off, enable PD6 interrupt )
+   0 OUT! [ 0 bdl? ]C! [ 0 2tr ]C! t1r [ 1 PD_CR2 6 ]B!
+;
+
+: D6-int		( port D6 interrupt )
+   SAVEC
+   [ 0 PD_CR2 6 ]B!				( disable trigger )
+   bdl? C@ if					( second trigger: switch off after bounce delay )
+     [ $FF 2tr ]C!
+     0  OUT! 0 TIM1_CNTRH 2C!	( switch off and reset TIM1 counter )
+   else							( first trigger:  )
+     [ $FF 1tr ]C!
+     t1s
+   then
+   EE.BDL @ TIM1_ARRH 2C!
+   IRET
+;
+-- INT_EXTI3 !				( set port D interrupt vector $8022 )
+
+: TIM1-int	( tim1 interrupt; retrigger timer for each second )
+   SAVEC
+   t1r
+   2tr C@ PLS @ 0= OR if			( switch off in case of 2e trigger )
+     SO 
+   else							( first interrupt is after bounce delay )
+     [ $FF bdl? ]C!
+     1tr C@ if				( first timer interrupt )
+       #1000 TIM1_ARRH 2C!		( 1 second )
+       PLS @ sec !
+       [ 0 1tr ]C! 1 OUT! t1s
+       [ 1 PD_CR2 6 ]B!				( reenable port D trigger )
+     else						( next interrupts, counting seconds )
+       sec @ 1- if
+         -1 sec +!
+         t1s
+       else					( no more seconds, stop)
+         SO
+       then
+     then
+   then
+   IRET
+;
+-- INT_TIM1 !					( SET TIM1 interrupt vector $8036 )
+
+: 10us  ( n -- )				( delay )
+   for 
+     [ $A62B ,  $4A  c,  $26FD ,  ] 
+   next
+;
+
+: init
+   100 10us					( we need a delay to prevent false trigger at power up )
+   [ $B0 CLK_PCKENR1 ]C! 		( tim1, tim2 -background ticker- and tim4 -uart-sim- enabled )
+   $3E12 TIM1_PSCRH 2C!			( 1 ms )
+   M.START m.ptr !				( point to the first menu item )
+   [ ' M0 ] literal m.level !
+   [ ' menu ] literal BG !
+   [ 0 PD_DDR 6 ]B!				( PD6 as input pull-up with interrupt )
+   [ 1 PD_CR1 6 ]B!
+   [ 1 PD_CR2 6 ]B!
+   [ 1 TIM1_EGR 0 ]B!			( initialise TIM1 )
+   [ 1 TIM1_IER 0 ]B!			( enable update interrupt )
+;
+
+-- toggle output
+: ox OUTPUTS @ 0= OUT! ;
+
+ram
+
+comment ===
+' init 'BOOT !
+
+( ULOCK 200 EE.BDL ! LOCK )
+
+
+\\
+Shorting the thermometer connection switches ON and starts the timer.
+A second triggering switches OFF.
+
+Buttons: set, +, -
+
+set: change menu level
+		level 0: output (minutes and seconds)
+		level 1: choose variable to edit
+		level 2: +, - : change first digit
+				 set: go to next digit or go back to level 0.
+variables are hold in EEPROM: bounce delay	EE.BDL
+							  minutes		EE.MIN
+							  seconds		EE.SEC
+
+debug words:
+: q c@ 4 .R ;	( print content of HW reg )
+: qq cr ." sr arr ccr cntr " cr $5255 q $5262 2c@ . $5265 2c@ . $525E 2c@ . ;
+: tst cr ." bdl? 2tr 1tr" cr bdl? ? 2tr ? 1tr ? ;
+: sr ( reg n -- ) cr 0 do dup  i + q loop drop ;	( print content of range of HW regs )
+===

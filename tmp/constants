@@ -1,0 +1,18 @@
+meta
+hex
+
+30 constant MP
+32 constant USRHLD
+34 constant YTEMP
+36 constant USRIDLE
+38 constant OUTPUTS
+3A constant KEYREPET
+3B constant LED7FIRST
+3D constant LED7LAST
+3E constant TIM4RCNT
+3F constant TIM4TCNT
+40 constant TIM4TXREG
+41 constant TIM4RXREG
+42 constant TIM4RXBUF
+43 constant BGADDR
+45 constant TICKCNT

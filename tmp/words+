@@ -1,0 +1,57 @@
+loading variable, implement foreward refs,  
+
+flash  dp constant f-image
+ram    dp constant r-image
+
+: flash?
+    h @ f-image = ;
+
+meta
+
+: VARIABLE
+   current preserve meta
+   create \m here 3 + ,
+   flash? if
+      dp                          ( save context)
+      ram \m here 0 \m ,          ( store 0)
+      swap h !                    ( restore context)
+      p, (dovarptr) \m ,          ( store memory pointer to ram)
+      does> @ \m @
+   else
+      p, (dovar) 0 \m ,           ( store 0)
+      does> @ 
+   then
+;
+
+-- byte variable
+: CVAR
+   current preserve meta
+   create \m here 3 + ,
+   flash? if
+      dp                          ( save context)
+      ram \m here 0 \m c,          ( store 0)
+      swap h !                    ( restore context)
+      p, (dovarptr) \m ,          ( store memory pointer to ram)
+      does> @ \m @
+   else
+      p, (dovar) 0 \m c,           ( store 0)
+      does> @ 
+   then
+;
+
+__meta
+hex
+
+'tr ?branch (0branch)      \f !
+'tr >R (>R)                \f !
+'tr R> (R>)                \f !
+'tr SWAP (SWAP)            \f !
+'tr (+loop) ((+loop))      \f !
+'tr 1 (1)                  \f !
+'tr donxt (donxt)          \f !
+'tr doVar (dovar)          \f !
+'tr docon (docon)          \f !
+'tr doVarPtr (dovarptr)    \f !
+'tr DROP (DROP)            \f !
+' thisvar (thisvar)      \f !
+
