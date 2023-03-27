@@ -18,20 +18,21 @@ forth
 meta
 
 : ho  \m __host ;
-
 : cs ( a --) flush drain c.set-sp ;
 : cg  ( --a) flush drain c.get-sp dup tsp ! ;
-
 : f- - ;
 : f+ + ;
 : f@ @ ;
 : f! ! ;
 : cpr ( a) ram-copied ! copy-ram ;
-: bgs baud-rate bps 0 pad ! pad \m BGADDR 2 c.write ;   ( stop background task)
-
--- write interrupt vector to flash image and to target
-: wv ( a v) dup h preserve flash dp preserve \m goto swap \m , fv ;
-
-hex ram
 
 forth
+-- write cell to flash image and to target
+: !flash ( n a) dup h preserve flash dp preserve \m goto swap \m , fc ;
+
+-- write cell to ram image and to target
+: !ram ( n a) \t ! remote ;
+
+-- stop backgroud task
+: bgs baud-rate bps 0 \m BGADDR !ram ;   ( stop background task)
+
