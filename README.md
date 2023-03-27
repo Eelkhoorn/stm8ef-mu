@@ -6,7 +6,7 @@ This repository provides some files that enables muforth (https://github.com/nim
 * put the tmp folder in muforth/mu/
 * replace forth.asm in stm8ef
 * add "MUFORTH = 1" to globconf.inc of the target
-* replace the .inc files in tg9541/stm8ef/inc and stm8ef/BOARD
+* replace the .inc files in stm8ef/inc and stm8ef/BOARD
 * run make BOARD=MINDEV flash or make BOARD=W1209-FD flash
 * make a sym link of stm8ef/out/BOARD/forth.rst in muforth/mu/tmp
 * run tmp/kernel.sh words to update the words file
