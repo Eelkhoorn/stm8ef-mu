@@ -10,8 +10,8 @@ forth
 -- flash region
 : fr  ( a len) c.flash-begin flash-region c.flash-end ;
 
--- flash interrupt vector
-: fv ( a) 2 fr ;
+-- flash cell
+: fc ( a) 2 fr ;
 
 : __b __building ;
 
