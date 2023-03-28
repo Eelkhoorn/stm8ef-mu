@@ -38,10 +38,10 @@ Files can be loaded on the command line (./muforth -f filename) or from within m
 in muforth do  
 chat  
 flash-image  
-' D6-int INT_EXTI3 wv  ( write the interrupt vectors)  
-' TIM1-int INT_TIM1 wv  
+' D6-int INT_EXTI3 !flash  ( write the interrupt vectors)  
+' TIM1-int INT_TIM1 !flash  
 ULOCK 200 EE.BDL ! LOCK  ( push button bounce delay)  
-' init 'BOOT wv  
+' init 'BOOT !flash  
 COLD  
 
 To be able to chat again the background task has to be stopped:  bgs
