@@ -32,7 +32,3 @@ forth
 
 -- write cell to ram image and to target
 : !ram ( n a) \t ! remote ;
-
--- stop backgroud task
-: bgs baud-rate bps 0 \m BGADDR !ram ;   ( stop background task)
-
