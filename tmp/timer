@@ -209,4 +209,4 @@ $40 c, $40 c, $40 c, ( to display "---")
 
 ' M0  ptr1 \f @ 1 + image-! 		-- replace dummy address ($AAAA)
 
-ld tmp/pdi
+ld tmp/timer-int
