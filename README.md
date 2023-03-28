@@ -34,7 +34,7 @@ The word chat starts chatting with the target and puts muforth in chatting state
 I have tested this only for the MINDEV and W1209-FD boards. The processor is put in wfi state, so it is active only during interrupts. 
 
 Files can be loaded on the command line (./muforth -f filename) or from within muforth with ld filename. There is a simple timer application for W1209 included that can be flashed:  
-./muforth -d W1209 -f target/STM8/build.mu4 -f p+ -f aliases  
+./muforth -d W1209 -f target/STM8/build.mu4 -f timer -f aliases  
 in muforth do  
 chat  
 flash-image  
