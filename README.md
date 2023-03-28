@@ -27,8 +27,21 @@ __meta
 
 Muforth has several dictionairies, ie .forth. .meta. .target. .target-runtime. .equates. These are defined in chains.mu4. The state defines which dictionaries are searched and what happens when a word is found. Dictionaries can be chained to each other. The variable current points to the active dictionary. New defined words are added to the active dictionary.
 
-Muforth keeps images of the target memories. For STM8 there are two images: one for flash and one for ram. The variable dp is used to point to one of them. These words swites between theme: ram and flash. Flashing the image to the target is done by flash-image.
+Muforth keeps images of the target memories on the host. For STM8 there are two images: one for flash and one for ram. The variable dp is used to point to one of them. These words swites between theme: ram and flash. Flashing the image to the target is done by flash-image.
 
 The word chat starts chatting with the target and puts muforth in chatting state. Now words are searched in the .target. dictionary and executed on the target if found. When a new definition is started ( with : ) muforth is put in __target-colon mode and the new word is added to the .target. dictionairy. If you want the word to be compile-only you have to execute [r] , right after the finishing ; .
 
 I have tested this only for the MINDEV and W1209-FD boards. The processor is put in wfi state, so it is active only during interrupts. 
+
+Files can be loaded on the command line (./muforth -f filename) or from within muforth with ld filename. There is a simple timer application for W1209 included that can be flashed:  
+./muforth -d W1209 -f target/STM8/build.mu4 -f p+ -f aliases  
+in muforth do  
+chat  
+flash-image  
+' D6-int INT_EXTI3 wv  ( write the interrupt vectors)  
+' TIM1-int INT_TIM1 wv  
+ULOCK 200 EE.BDL ! LOCK  ( push button bounce delay)  
+' init 'BOOT wv  
+COLD  
+
+To be able to chat again the background task has to be stopped:  bgs
