@@ -55,8 +55,7 @@ in muforth do:
 ( write the interrupt vectors:)
 + ' D6-int INT_EXTI3 !flash  
 + ' TIM1-int INT_TIM1 !flash  
-+ ULOCK 200 EE.BDL !  ( push button bounce delay, you will get a timeout error)  
-+ LOCK  
++ #200 EE.BDL !eeprom  ( push button bounce delay)  
 + ' init 'BOOT !flash  
 + COLD  
 
