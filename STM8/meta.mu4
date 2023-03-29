@@ -214,3 +214,19 @@ forth
 .meta. chain' literal   is target-literal
              ' number   is target-number    ( use host's number)
 .meta. chain' compile,  is target-compile,
+
+-- Create/does>
+-- syntax:
+-- create parent: n ( number of cells to be compiled in child word) t-create parent-name [target words] t-does ;
+-- create child:  n0 n1 ... n parent-name child-name
+
+forth
+variable cre-n
+target-compiler
+: ;h \tc ; \m __host  ]  ;
+: t-does
+  \tc ;h does> \m name  dup cell+ @ "cd \m c, \m , @ for \m , next ;
+
+forth
+: t-create ( n)
+   create ( n) , \m here , p, (thisvar) \m ] ;
