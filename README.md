@@ -37,7 +37,7 @@ Muforth keeps images of the target memories on the host. For STM8 there are two 
 The word chat starts chatting with the target and puts muforth in chatting mode. Now words are searched in the .target. dictionary and executed on the target if found. When a new definition is started ( with : ) muforth is put in __target-colon mode and the new word is added to the .target. dictionary. If you want the word to be compile-only you have to execute [r] , right after the finishing ; , this puts the last created word in .target-runtime.
 
 ### Loading files
-Files can be loaded on the command line (./muforth -f filename) or from within muforth with ld filename.
+Files can be loaded on the command line (./muforth -f filename) or from within muforth with ld filename. The path has to be relative to muforth/mu or absolute.
 
 ### Examining memory
 + _du ( a) inspects host memory
