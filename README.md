@@ -47,10 +47,12 @@ Files can be loaded on the command line (./muforth -f filename) or from within m
 There is a simple timer application for W1209 included that can be flashed:  
 Start muforth from muforth/mu
 + ./muforth -d W1209 -f target/STM8/build.mu4 -f tmp/timer -f tmp/aliases  
-in muforth do:  
+
+in muforth do:
 + chat  
 + flash-image  
-( write the interrupt vectors:)  
+
+( write the interrupt vectors:)
 + ' D6-int INT_EXTI3 !flash  
 + ' TIM1-int INT_TIM1 !flash  
 + ULOCK 200 EE.BDL !  ( push button bounce delay, you will get a timeout error)  
