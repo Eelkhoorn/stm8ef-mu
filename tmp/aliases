@@ -8,12 +8,13 @@ forth
 : fi flash-image ;
 
 -- flash region
-: fr  ( a len) c.flash-begin flash-region c.flash-end ;
+: flr  ( a len) c.flash-begin flash-region c.flash-end ;
+-- write to eeprom
+: epr  ( a len) \t ULOCK remote flash-region \t LOCK remote ;
 
--- flash cell
-: fc ( a) 2 fr ;
-
-: __b __building ;
+-- flash cell, 2 bytes
+: flc ( a) 2 flr ;
+: epc ( a) 2 epr ;
 
 meta
 
@@ -28,7 +29,9 @@ meta
 
 forth
 -- write cell to flash image and to target
-: !flash ( n a) dup h preserve flash dp preserve \m goto swap \m , fc ;
+: flash-h dup dp preserve \m goto swap \m , ;
+: !flash  ( n a) flash-h flc ;
+: !eeprom ( n a) flash-h epc ;
 
 -- write cell to ram image and to target
 : !ram ( n a) \t ! remote ;
