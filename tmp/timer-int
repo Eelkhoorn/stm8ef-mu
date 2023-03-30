@@ -4,11 +4,9 @@ comment ===
 Part of p+ timer program for W1209-FD with MOC/TRIAC stage
 for swithing 230V AC
 These are the interrupt routines for port PD6 and timer1
-and initialisation, to be placed in boot vector
-then it starts counting down seconds
+and initialisation (init, to be placed in boot vector).
+Usage: see bottom.
 ===
-
-( Usage: see bottom. )
 
 ld tmp/lib/]B!
 ld tmp/lib/]C!
@@ -91,35 +89,24 @@ CVAR 2tr		( second -or more- timer interrupt )
    [ 1 TIM1_IER 0 ]B!			( enable update interrupt )
 ;
 
--- toggle output
-: ox OUTPUTS @ 0= OUT! ;
-
 ram
 
 comment ===
-' init 'BOOT !
+' init 'BOOT !flash
+200 EE.BDL !eeprom
 
-( ULOCK 200 EE.BDL ! LOCK )
-
-
-\\
-Shorting the thermometer connection switches ON and starts the timer.
+shorting the thermometer connection switches ON and starts the timer.
 A second triggering switches OFF.
 
 Buttons: set, +, -
 
 set: change menu level
-		level 0: output (minutes and seconds)
-		level 1: choose variable to edit
-		level 2: +, - : change first digit
-				 set: go to next digit or go back to level 0.
-variables are hold in EEPROM: bounce delay	EE.BDL
-							  minutes		EE.MIN
-							  seconds		EE.SEC
-
-debug words:
-: q c@ 4 .R ;	( print content of HW reg )
-: qq cr ." sr arr ccr cntr " cr $5255 q $5262 2c@ . $5265 2c@ . $525E 2c@ . ;
-: tst cr ." bdl? 2tr 1tr" cr bdl? ? 2tr ? 1tr ? ;
-: sr ( reg n -- ) cr 0 do dup  i + q loop drop ;	( print content of range of HW regs )
+  level 0: output (minutes and seconds)
+  level 1: choose variable to edit
+  level 2: +, - : change first digit
+           set:   go to next digit or go back to level 0.
+variables are hold in EEPROM:
+  bounce delay:  EE.BDL
+  minutes:       EE.MIN
+  seconds:       EE.SEC
 ===
