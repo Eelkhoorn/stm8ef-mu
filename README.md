@@ -29,8 +29,8 @@ Muforth can be put in different modes. A mode defines how input commands are int
 ### Dictionaries
 Muforth has several dictionaries, ie .forth. .meta. .target. .target-runtime. .equates. These are defined in chains.mu4. The mode defines which dictionaries are searched and what happens when a word is found. Dictionaries can be chained to each other. The variable current points to the active dictionary. New defined words are added to the active dictionary. Immediate words are in a separate dictionary: .compiler. for immediate host words and .target-compiler. for immediate target words.
 
-### Target images
-Muforth keeps images of the target memories on the host. For STM8 there are two images: one for flash and one for ram. The variable dp is used to point to one of them. These words switches between them: ram and flash. Flashing the image to the target is done by flash-image.
+### Target memory images
+Muforth keeps images of the target memories on the host. For STM8 there are two images: one for flash and one for ram. The 2variable dp holds the start address and current pusition of the active image. Words to switch between images: ram and flash. Flashing the image to the target is done by flash-image.
 
 ### Communication over uart
 The word chat starts chatting with the target and puts muforth in chatting mode. Now words are searched in the .target. dictionary and executed on the target if found. When a new definition is started ( with : ) muforth is put in __target-colon mode and the new word is added to the .target. dictionary. If you want the word to be compile-only you have to execute [r] , right after the finishing ; , this puts the last created word in .target-runtime.
