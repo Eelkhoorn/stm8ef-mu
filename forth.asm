@@ -601,6 +601,7 @@ $1:    JRA      SLEEP
 .endif
 
 .if    HAS_RXUART*HAS_TXUART       
+        JRA      SLEEP
 UART_INT:
         CALL CHAT
         LDW (#3,SP),X             ; X is popped from return stack during IRET
