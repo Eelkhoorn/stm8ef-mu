@@ -92,7 +92,14 @@ CVAR 2tr		( second -or more- timer interrupt )
 ram
 
 comment ===
+flash interrupt vectors:
+' D6_int INT_EXTI3 !flash
+' TIM1_int INT_TIM1 !flash
+
+flash boot vector:
 ' init 'BOOT !flash
+
+flash push-button bounce delay
 200 EE.BDL !eeprom
 
 shorting the thermometer connection switches ON and starts the timer.
@@ -103,7 +110,7 @@ Buttons: set, +, -
 set: change menu level
   level 0: output (minutes and seconds)
   level 1: choose variable to edit
-  level 2: +, - : change first digit
+  level 2: +, - : change digit value
            set:   go to next digit or go back to level 0.
 variables are hold in EEPROM:
   bounce delay:  EE.BDL
