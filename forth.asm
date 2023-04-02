@@ -3189,13 +3189,13 @@ QSTAC:
         CALL    DEPTH
         CALL    ZLESS           ; check only for underflow
 .ifeq MUFORTH
-        CALL    ABORQ
+        JRA    ABORQ
 .else
         CALL    ABORT        
-.endif
         .db     10
         .ascii  " underflow"
         RET
+.endif
 
 ;       QUIT    ( -- )
 ;       Reset return stack pointer
