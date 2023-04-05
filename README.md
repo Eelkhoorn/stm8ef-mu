@@ -10,6 +10,7 @@ This repository provides some files that enables muforth (https://github.com/nim
 * check wether the symlink stm8ef/muforth_inc/boardcore.inc points to the right file
 * run **make BOARD=MINDEV flash** or **make BOARD=W1209-FD flash**
 * make a sym link of **stm8ef/out/BOARD/forth.rst** in **muforth/mu/work**
+* check the link in muforth/mu/tools/kernel.sh
 * run **work/kernel.sh ** to update the words file
 * hook up an uart interface device, make sure **muforth/mu/serial-target** points to your uart device
 * start muforth from muforth/mu:  
