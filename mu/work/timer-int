@@ -1,8 +1,7 @@
 loading PCB timer pdi, don't forget to flash the interrupt vectors!
 
 comment ===
-Part of p+ timer program for W1209-FD with MOC/TRIAC stage
-for swithing 230V AC
+Part of timer program for W1209-FD
 These are the interrupt routines for port PD6 and timer1
 and initialisation (init, to be placed in boot vector).
 Usage: see bottom.
@@ -110,9 +109,9 @@ Buttons: set, +, -
 set: change menu level
   level 0: output (minutes and seconds)
   level 1: choose variable to edit
-  level 2: +, - : change first digit
+  level 2: +, - : change digit value
            set:   go to next digit or go back to level 0.
-variables are hold in EEPROM:
+variables in EEPROM:
   bounce delay:  EE.BDL
   minutes:       EE.MIN
   seconds:       EE.SEC
