@@ -77,11 +77,6 @@ _TIM3_IRQHandler:
         LDW     X,YTEMP         ; Save context
         PUSHW   X
 
-.ifeq MUFORTH
-        PUSH    USRBASE+1       ; 8bit since BASE should be < 36
-        MOV     USRBASE+1,#10
-.endif
-
         LDW     X,USREMIT       ; save EMIT exection vector
         PUSHW   X
         LDW     X,#EMIT_BG      ; "'BGEMIT" xt of EMIT for BG task
@@ -108,10 +103,6 @@ _TIM3_IRQHandler:
 
         POPW    X
         LDW     USREMIT,X
-
-.ifeq MUFORTH
-        POP     USRBASE+1
-.endif
 
         POPW    X
         LDW     YTEMP,X

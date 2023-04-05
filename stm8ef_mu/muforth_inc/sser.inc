@@ -89,11 +89,7 @@ _TIM4_IRQHandler:
 
         ; include required serial I/O code
           .ifne  PNRX^PNTX
-            .if MUFORTH
-               .include"sser_fdx-mu.inc"
-            .else   
-               .include "sser_fdx.inc" ; Full Duplex serial
-            .endif
+               .include"muforth-inc/sser_fdx.inc"
           .else
             .include "sser_hdx.inc" ; Half Duplex serial
           .endif

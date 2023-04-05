@@ -14,6 +14,4 @@ if(adr<0x8000) adr=adr+offset
 
 printf "%x%s%s%s", adr, " goto  : ", o, " ;\n"
 }
-END {print "\n"FLASH_END" 808B + goto\n\nram\n\n\
-ld tmp/words+\n\
-ld tmp/constants\n"}
+END {print "\n"FLASH_END" 808B + goto\n"}

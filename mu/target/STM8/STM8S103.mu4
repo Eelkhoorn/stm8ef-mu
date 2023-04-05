@@ -14,10 +14,11 @@ decimal
 #115200
 .then
 constant baud-rate
-1 serial-timeout   ( writing to eeprom is slow and stalls chat process otherwise)
 "340 constant @flashbuf
 
-ld tmp/words
+1 serial-timeout
+
+ld target/STM8/words
 
 ( First, a few defining words, which we'll use to load the "equates".)
 : equ     ( offset)  current preserve  .equates. definitions  constant ;

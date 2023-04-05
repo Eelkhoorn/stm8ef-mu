@@ -1,0 +1,1 @@
+boardcore-MINDEV.inc

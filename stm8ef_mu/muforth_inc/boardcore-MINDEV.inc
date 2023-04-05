@@ -36,15 +36,9 @@ LED_MPX:
 ;       Put c to board outputs, storing a copy in OUTPUTS
 
 
-.if MUFORTH
         HEADER  OUTSTOR "OUT!"
-.else
-        .dw     LINK
 
-        LINK =  .
-        .db     (4)
-        .ascii  "OUT!"
-.endif
+        .dw     LINK
 
 OUTSTOR:
         INCW    X

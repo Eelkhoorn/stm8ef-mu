@@ -34,11 +34,7 @@ QRX:
 QRXP:
         CLR     A
         EXG     A,TIM4RXBUF     ; read and consume char
-.if MUFORTH
         JP      ASTOR
-.else
-        JP      ATOKEY
-.endif
         .endif
 
         .ifne   HAS_TXSIM

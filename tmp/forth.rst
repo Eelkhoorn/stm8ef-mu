@@ -1,1 +1,0 @@
-/home/pi/temp/test/stm8ef/out/W1209-FD/forth.rst

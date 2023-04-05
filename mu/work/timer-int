@@ -29,7 +29,7 @@ CVAR 2tr		( second -or more- timer interrupt )
    0 OUT! [ 0 bdl? ]C! [ 0 2tr ]C! t1r [ 1 PD_CR2 6 ]B!
 ;
 
-: D6-int		( port D6 interrupt )
+: D6_int		( port D6 interrupt )
    SAVEC
    [ 0 PD_CR2 6 ]B!				( disable trigger )
    bdl? C@ if					( second trigger: switch off after bounce delay )
@@ -44,7 +44,7 @@ CVAR 2tr		( second -or more- timer interrupt )
 ;
 -- INT_EXTI3 !				( set port D interrupt vector $8022 )
 
-: TIM1-int	( tim1 interrupt; retrigger timer for each second )
+: TIM1_int	( tim1 interrupt; retrigger timer for each second )
    SAVEC
    t1r
    2tr C@ PLS @ 0= OR if			( switch off in case of 2e trigger )
@@ -92,7 +92,14 @@ CVAR 2tr		( second -or more- timer interrupt )
 ram
 
 comment ===
+flash interrupt vectors:
+' D6_int INT_EXTI3 !flash
+' TIM1_int INT_TIM1 !flash
+
+flash boot vector:
 ' init 'BOOT !flash
+
+flash push-button bounce delay
 200 EE.BDL !eeprom
 
 shorting the thermometer connection switches ON and starts the timer.
