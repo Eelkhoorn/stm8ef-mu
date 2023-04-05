@@ -170,7 +170,7 @@
 
         ; STM8 device specific include (provided by file in board folder)
         ; sets "TARGET" and memory layout
-        .include        "muforth-inc/target.inc"
+        .include        "muforth_inc/target.inc"
 
         ; STM8 Flash Block Size (depends on "TARGET")
         .ifeq   (TARGET - STM8S_LOD) * (TARGET - STM8L_101) * (TARGET - STM8L_LOD)
@@ -196,7 +196,7 @@
         ; Note: add defaults for new features here
         ;       and configure them in globconf.inc
 
-        .include  "muforth-inc/defconf.inc"
+        .include  "muforth_inc/defconf.inc"
 
         ;********************************************
         ;******  4) Device dependent features  ******
@@ -369,7 +369,7 @@ _TRAP_Handler:
 ;       Includes for board support code
 ;       Board I/O initialization and E/E mapping code
 ;       Hardware dependent words, e.g.  BKEY, OUT!
-        .include "muforth-inc/boardcore.inc"
+        .include "muforth_inc/boardcore.inc"
 
 ;       ADC routines depending on STM8 family
         .include "stm8_adc.inc"
@@ -378,10 +378,10 @@ _TRAP_Handler:
         .include "board_io.inc"
 
 ;       Simulate serial interface code
-        .include "muforth-inc/sser.inc"
+        .include "muforth_inc/sser.inc"
 
 ;       Background Task: context switch with wakeup unit or timer
-        .include "muforth-inc/bgtask.inc"
+        .include "muforth_inc/bgtask.inc"
 UPPLOC = RAMPOOL + 30  ; PAD in Background task, growing down, 32 bytes
 
 ; ==============================================
