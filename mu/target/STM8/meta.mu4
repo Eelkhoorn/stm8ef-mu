@@ -42,7 +42,23 @@ forth
 meta
 :  ]   __target-colon  notag ;
 
-meta
+( These are pointers to target kernel words.)
+variable (0branch)
+variable (+loop)
+variable (>R)
+variable (R>)
+variable (donxt)
+variable (SWAP)
+variable (DUP)
+variable (DROP)
+variable (+LOOP)
+variable ((+loop))
+variable (1)
+variable (dovar)
+variable (docon)
+variable (dovarptr)
+variable (thisvar)
+
 : literal  "83 \m c, \m , ;
 : compile,  ( target-cfa)  \m here swap  \a c ( compile call)  image-c@ tag! ;
 forth
@@ -64,7 +80,7 @@ forth
    tag@
    dup $bsr  = if ( bsr)      "20 ( bra)      -2 replace ^  then
    dup $jsr1 = if ( jsr dir)  "bc ( jmp dir)  -2 replace ^  then
-   dup $jsr2 = if ( jsr ext)  "cc ( jmp ext)  -3 replace ^  then
+   dup $jsr2 = \m here 2 - image-@ \m (R>) @ = not and if ( jsr ext)  "cc ( jmp ext)  -3 replace ^  then
    drop  0 ;
 
 target-compiler
@@ -137,23 +153,6 @@ meta
 
 ( Resolve a forward or backward jump, from src to dest.)
 ( When using absolute branch addresses, this is easy: just store dest at src.)
-
-( These are pointers to target CODE words.)
-variable (0branch)
-variable (+loop)
-variable (>R)
-variable (R>)
-variable (donxt)
-variable (SWAP)
-variable (DUP)
-variable (DROP)
-variable (+LOOP)
-variable ((+loop))
-variable (1)
-variable (dovar)
-variable (docon)
-variable (dovarptr)
-variable (thisvar)
 
 : <resolve  ( dest src)  image-! notag ;
 : >resolve  ( src dest)  swap  \m <resolve ;
