@@ -1,0 +1,29 @@
+-- STM8EF : ]@ - [ a ] LITERAL @ for time critical code, e.g. ISR TG9541 - 201129
+-- ------------------------------------------------------------------------------
+.ifndef (]@)
+
+: (]@) ;
+
+
+meta
+: ]@  -- like "[ a ] LITERAL @"
+  $90CE \m , \m ,   --  LDW  Y,a
+  $5A5A \m ,     --  DECW X  DECW X
+  $FF \m c, ]    --  LDW  (X),Y
+  \m ]
+;
+
+.then
+
+comment ===
+ Example:
+
+#require ]@
+
+VARIABLE vt
+: t [ vt ]@ . ;
+
+1111 vt !
+t -- 1111 ok
+
+===

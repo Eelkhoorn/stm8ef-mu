@@ -1,0 +1,38 @@
+.ifndef (CRC8)
+
+: (CRC8) ;
+
+meta
+
+-- STM8 eForth: CRC8 for 1-Wire protocol,  polynomial x8 + x5 + x4 + 1
+-- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
+
+-- implementation for 1-wire protocol
+
+: CRC8 ( crc c -- crc ) [   --  1-Wire CRC8
+  $A608 \m ,    --     LD	  A,#8     ; loop through 8 bits
+  $F7  \m c,    --     LD	  (X),A    ; use MSB as bit counter 
+  $E601 \m ,    --     LD	  A,(1,X)  ; 
+  $E803 \m ,    -- 1$: XOR  A,(3,X)  ; crc XOR c.bit0
+  $46  \m c,    --     RRC  A        ; to carry
+  $E603 \m ,    --     LD	  A,(3,X)  ; crc -> A
+  $2402 \m ,    --     JRNC 0$
+  $A818 \m ,    --     XOR  A,#0x18  ; apply x5 + x4
+  $46  \m c,    -- 0$: RRC  A        ; apply x8 + 1
+  $E703 \m ,    --     LD	  (3,X),A  ; update crc value
+  $6401 \m ,    --     SRL  (1,X)    ; next c.bit0
+  $E601 \m ,    --     LD   A,(1,X)
+  $7A  \m c,    --     DEC  (X)      ; bit counter until 0
+  $26ED \m ,    --     JRNE 1$       ; loop?
+  $5C  \m c,    --     INCW X        ; DROP
+  $5C  \m c,    --     INCW X
+ ;
+
+comment ===
+ Test
+
+-- DALLAS MAXIM AN937 Figure 3 Example Calculation for DOW CRC
+HEX 0 2 CRC8 1C CRC8 B8 CRC8 1 CRC8 0 CRC8 0 CRC8 0 CRC8 . DECIMAL -- -> A2
+===
+
+.then

@@ -1,0 +1,9 @@
+.ifndef (0>)
+
+: (0>) ;
+
+__meta
+
+: 0> ( n -- flag ) NEGATE 0< ;
+
+.then

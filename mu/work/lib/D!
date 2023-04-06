@@ -1,0 +1,11 @@
+.ifndef [D!]
+
+: [D!] ;
+
+__meta
+
+: D! ( nl nh a -- )
+	SWAP OVER 2+ ! !
+;
+
+.then

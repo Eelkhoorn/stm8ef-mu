@@ -1,0 +1,27 @@
+.ifndef (]@IF)
+
+: (]@IF) ;
+
+meta
+
+-- STM8EF : ]@IF  like "LITERAL @ IF" with relative addressing    TG9541 - 201129
+-- ------------------------------------------------------------------------------
+
+ld work/lib>REL
+: ]@IF  ( -- ) $90CE \m , \m , ( LDW Y,a ) \m ]  JREQ ;
+
+comment ===
+ Example:
+
+#require ]@IF
+
+VARIABLE vt
+
+: test ( -- )
+  [ vt ]@IF
+    ."  vt not 0"
+  THEN
+;
+===
+
+.then

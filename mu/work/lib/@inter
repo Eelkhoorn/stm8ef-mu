@@ -1,0 +1,44 @@
+
+.ifndef (@inter)
+
+: @inter ;
+
+__meta
+
+-- Linear interpolation between closest x-sorted x/y pairs
+-- Saturates to y(xmin), y(xmax).
+-- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
+
+-- helper for @dif and @inter
+: 2cell+ ( a -- a a+4 )  DUP 2+ 2+ ;
+
+-- @dif delta of x1-x0 or y1-y0
+-- difference of two values two cells apart, helper for @inter
+: dif@ ( a -- n )  OVER 2cell+  @ SWAP @ - ;
+
+-- find (X0,Y0)/(X1,Y1) in table, interpolate w/ saturation
+: @inter ( n a -- n )
+    DUP @ 1- >R 2+ DUP begin
+      2 PICK OVER @ < NOT while NIP  2cell+ next
+        DROP DUP
+      else R> DROP then
+    OVER = if
+      2+ @ NIP
+    else
+      DUP ROT OVER @ - OVER 2+  @dif
+      ROT  @dif */ SWAP 2+ @ +
+    then
+;
+
+comment ===
+ Example:
+
+  -- create structure with 3 x/y pairs:
+  CREATE iTab 3 ,   -100 , 200 ,   0 , 100 ,   100 , -1000 ,
+
+  -200 iTab @inter .  -- 200 ok
+    50 iTab @inter .  -- -450 ok
+   200 iTab @inter .  -- -1000 ok
+===
+
+.then

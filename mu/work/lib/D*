@@ -1,0 +1,13 @@
+-- unsigned multiply of double by single
+
+.ifndef [D*]
+
+: [D*] ;
+
+__meta
+
+: D* ( ul uh u -- d)
+	DUP >R * 0 SWAP ROT R> UM* D+
+; 
+
+.then

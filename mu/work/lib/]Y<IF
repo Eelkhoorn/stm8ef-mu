@@ -1,0 +1,28 @@
+.ifndef (]Y<IF)
+
+: (]Y<IF) ;
+
+meta
+
+-- STM8EF : ]Y<IF  like "( n ) Y@ < IF" with relative addressing  TG9541 - 201129
+-- ------------------------------------------------------------------------------
+
+-- >REL resides in work/lib/JREQ
+-- like "n Y@ < IF" with relative addressing
+: ]Y<IF $90A3 \m , ( n ) \m , $2A \m c,  >REL ; -- CPW Y,#n  JRPL rel
+
+comment ===
+ Example:
+
+#require ]Y<IF
+
+VARIABLE vt
+
+: test ( -- )
+  vt @ ( Y now equals TOS )
+  [ 3 ]Y<IF ." 3 >=" THEN  -- compare Y with constant
+  ( still TOS ) .
+;
+===
+
+.then

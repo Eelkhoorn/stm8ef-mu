@@ -1,0 +1,39 @@
+.ifndef (FC!)
+
+: (FC!) ;
+
+__meta
+
+-- STM8eForth : FC!                                                 TG9541-200726
+-- ------------------------------------------------------------------------------
+
+-- store char c to far address ah:al
+: FC! ( c al ah -- ) [
+  -- Note: creates/executes LDF A,ah:al + RET code on the Data Stack
+  $A6BD \m ,          --        LD      A,#0xBD         ; Opcode LDF ExtAddr,A
+  $F7  \m c,          --        LD      (X),A           ; MSB of ah (instead of "0")
+  $A681 \m ,          --        LD      A,#0x81         ; Opcode RET
+  $E704 \m ,          --        LD      (4,X),A         ; MSB of C (instead of "0")
+  $E605 \m ,          --        LD      A,(5,X)         ; load C
+  $FD  \m c,          --        CALL    (X)             ; execute LDF
+  $1C  \m c, $0006 \m ,  --        ADDW    X,#6            ; DROP all
+] ;
+
+comment ===
+ Example
+
+#require FC!
+#require FC@
+
+-- double constants for extended address 0x010000
+$01   CONSTANT MSB
+$0000 CONSTANT LSB
+
+NVM
+$AA LSB MSB FC!
+RAM
+
+LSB MSB FC@ HEX . DECIMAL  -- this should print AA
+===
+
+.then

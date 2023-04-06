@@ -1,0 +1,14 @@
+.ifndef [D+!]
+
+: [D+!] ;
+ld work/lib/D@
+ld work/lib/D+
+ld work/lib/D!
+
+__meta
+
+: D+! ( d a -- )
+	DUP >R D@ D+ R> D!
+;
+
+.then

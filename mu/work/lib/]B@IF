@@ -1,0 +1,14 @@
+.ifndef (]B@IF)
+
+: (]B@IF) ;
+
+__meta
+
+-- STM8EF : ]B@IF  like "]B? IF" with relative addressing         TG9541 - 201129
+-- ------------------------------------------------------------------------------
+
+ld work/lib/>REL
+
+: ]B@IF ( -- ) 2* $7201 + , ,  ] >REL ;    -- BTJF  a,#bit
+
+.then

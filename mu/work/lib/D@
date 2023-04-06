@@ -1,0 +1,10 @@
+.ifndef [D@]
+
+: [D@] ;
+__meta
+
+: D@ ( a -- nl nh )
+	2@ SWAP
+;
+
+.then

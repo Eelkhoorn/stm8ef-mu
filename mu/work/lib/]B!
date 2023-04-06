@@ -1,4 +1,6 @@
-ram
+.ifndef (]B!)
+
+: (]B!) ;
 
 meta
 
@@ -7,3 +9,4 @@ meta
      rot 0= 1 and swap 2* $10  +  + $72 \m c, \m c, \m , \m ]
 ;
 
+.then

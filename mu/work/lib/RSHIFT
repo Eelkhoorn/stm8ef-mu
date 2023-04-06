@@ -1,0 +1,23 @@
+.ifndef (RSHIFT)
+
+: (RSHIFT) ;
+
+meta
+
+-- STM8eForth : RSHIFT                                              TG9541-210417
+-- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
+
+: RSHIFT ( n c - n )  -- shift n right c times
+    $5C  \m c,  --     INCW    X
+    $F6  \m c,  --     LD      A,(X)
+    $5C  \m c,  --     INCW    X
+    $4D  \m c,  --     TNZ     A
+    $2705 \m ,  --     JREQ    1$
+    $77  \m c,  -- 2$: SRA     (X)
+    $6601 \ m,  --     RRC     (1,X)
+    $4A  \m c,  --     DEC     A
+    $26F8 \m ,  --     JRNE    2$
+                -- 1$:
+;
+
+.then
