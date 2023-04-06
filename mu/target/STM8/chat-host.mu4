@@ -20,7 +20,6 @@ hex
 15  set-sp      - used in stack> to prevent overwriting the stack
 16  run         - set sp and pc and execute
 17  flash       - set target address and count, wait for response
-18  return      - exit chat
 
 
 19 - ff  idle   - these command bytes are ignored

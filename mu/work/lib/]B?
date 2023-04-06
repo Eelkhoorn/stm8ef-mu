@@ -1,7 +1,8 @@
-loading ]B?
 -- STM8EF :  ]B?                                              TG9541,  MM-180324
 
 .ifndef (]B?)
+
+loading ]B?
 
 : (]B?) ;
 
