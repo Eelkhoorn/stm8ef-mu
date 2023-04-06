@@ -1796,7 +1796,7 @@ YFLAGS:
 ;       >A   ( c -- )       ( TOS STM8: - A,Z,N )
 ;       Consume TOS to CPU A and Flags
 
-        HEADER  AFLAGS "A>"
+        HEADER  AFLAGS ">A"
 AFLAGS:
         INCW    X
         LD      A,(X)
