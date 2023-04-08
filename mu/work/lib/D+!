@@ -1,9 +1,10 @@
-.ifndef [D+!]
+.ifndef (D+!)
 
-: [D+!] ;
-ld work/lib/D@
-ld work/lib/D+
-ld work/lib/D!
+: (D+!) ;
+
+ld werk/lib/D@
+ld werk/lib/D+
+ld werk/lib/D!
 
 __meta
 

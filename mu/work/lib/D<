@@ -1,10 +1,10 @@
-.ifndef [D<]
+.ifndef (D<)
 
-: [D<] ;
+: (D<) ;
 
 
-ld work/lib/2SWAP
-ld work/lib/D>
+ld werk/lib/2SWAP
+ld werk/lib/D>
 
 __meta
 

@@ -11,7 +11,7 @@ meta
   -- c-addr. At runtime return true if the bit is set, false otherwise.
 : ]B? ( c-addr bit -- f )
   --  CLRW Y  BTJF a,#b,PC+2 DECW Y DECW X DECW X LDW X,Y
-      $905F \m , 2* $7201 + \m , \m , $0290 \m , $5A5A \m , $5AFF \m , \m ]
+      $905F \m , \f 2* $7201 \f + \m , \m , $0290 \m , $5A5A \m , $5AFF \m , \m ]
 ;
 
 .then

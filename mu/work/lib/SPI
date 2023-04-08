@@ -6,8 +6,8 @@
 -- derived from al177/stm8ef/HC12/boardcore.inc
 -- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
 
-ld work/lib/]C!
-ld work/lib/]B!
+ld werk/lib/]C!
+ld werk/lib/]B!
 
 __meta
 flash
@@ -22,13 +22,13 @@ flash
     $47 c,              --  SRA     A         ; 2 /
     $AA04 ,             --  OR      A,#4      ; set master mode
     $C7 c, SPI_CR1 , ]  --  LD      SPI_CR1,A
-  [ $01 SPI_CR2 ]C!     -- no NSS, FD, no CRC
-  [ 1 SPI_CR1 6 ]B!    -- SPI enable
+  [ \f 1 SPI_CR2 ]C!     -- no NSS, FD, no CRC
+  [ \f 1 SPI_CR1 6 ]B!    -- SPI enable
 ;
 
 -- disable SPI
 : SPIoff ( -- )
-  [ 0 SPI_CR1 ]C!    -- disable SPI
+  [ \f 0 SPI_CR1 ]C!    -- disable SPI
 ;
 
 -- Perform SPI byte cycle with result c
@@ -40,5 +40,33 @@ flash
     $E701 ,                 -- LD (1,X),A
     $7F c, ]                -- CLR  (X)
 ;
+
+comment ===
+
+Example:
+
+-- interactive SPI test
+
+-- non-e4thcom / codeload.py: remove the following lines...
+
+-- ... and uncomment the constant definitions
+-- $5200 constant SPI_CR1
+-- $5201 constant SPI_CR2
+-- $5203 constant SPI_SR
+-- $5204 constant SPI_DR
+
+flash
+
+-- non-e4thcom / codeload.py: include file contents here
+--ld werk/hw/spi.fs
+
+ram
+
+1 SPIon   --  clock SPI = click core / 2
+
+-- loopback: connect pins PC6/MOSI and PC7/MISO)
+165 SPI . -- 165
+SPIoff
+===
 
 .then

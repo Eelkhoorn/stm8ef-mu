@@ -10,7 +10,7 @@ meta
   -- Compile the code to toggle a bit at addr.
   : ]BCPL ( addr bit -- )
     -- compile BCPL addr,#bit
-    $90 \m , 2* $10 or \m c, \m , \m ]
+    $90 \m , \f 2* $10 or \m c, \m , \m ]
   ;
 
 .then

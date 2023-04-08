@@ -1,6 +1,6 @@
 #!/bin/bash
 # check the sym link below!!
-symlink=/home/USER/muforth/mu/target/STM8/words.mu4
+symlink=/home/$USER/muforth/mu/target/STM8
 
 words="$(pwd)"/words.mu4
 SOURCE=${BASH_SOURCE[0]}
@@ -16,4 +16,5 @@ dir=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 "$dir"/words.awk --non-decimal-data forth.rst >> $words
 "$dir"/constants.awk forth.rst >> $words
 [ -h $symlink ] && rm $symlink
-[ -e $words ] && ln -s $words $symlink
+[ -e $words ] && ln -s $words "$symlink"/words4 || \
+echo "\"symlink\" in kernel.sh should point to your muforth/mu/target/STM8 directory!"

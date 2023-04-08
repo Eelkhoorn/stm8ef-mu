@@ -5,37 +5,34 @@ ram    dp constant r-image
 
 : flash?
     h @ f-image = ;
-
 meta
+: allotr
+   flash? if ram \m allot flash else allot then ;
+
+: +! ( u a) dup \m @ rot \f + swap \m ! ;
 
 : VARIABLE
-   current preserve meta
-   create \m here 3 + ,
+   \m name
    flash? if
       dp                          ( save context)
       ram \m here 0 \m ,          ( store 0)
       swap h !                    ( restore context)
       p, (dovarptr) \m ,          ( store memory pointer to ram)
-      does> @ \m @
    else
       p, (dovar) 0 \m ,           ( store 0)
-      does> @ 
    then
 ;
 
 -- byte variable
 : CVAR
-   current preserve meta
-   create \m here 3 + ,
+   \m name
    flash? if
       dp                          ( save context)
       ram \m here 0 \m c,          ( store 0)
       swap h !                    ( restore context)
       p, (dovarptr) \m ,          ( store memory pointer to ram)
-      does> @ \m @
    else
       p, (dovar) 0 \m c,           ( store 0)
-      does> @ 
    then
 ;
 

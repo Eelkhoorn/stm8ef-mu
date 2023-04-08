@@ -2,7 +2,7 @@
 
   Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
 
-loading S08 meta-compiler (chains and token consumers)
+loading STM8 meta-compiler (chains and token consumers)
 
 forth  decimal
 

@@ -8,7 +8,7 @@ meta
 -- spin loop, exit when the defined bit value is reached
 : ]SPIN ( 1|0 addr bit -- )
   -- compile a spin loop with BTJT or BTJF
-  2* rot 0= not 1 and + $72 \m c, \m c \m , $FB \m c, \m ]
+  \f 2* rot \f 0= not \f 1 and \f + $72 \m c, \m c \m , $FB \m c, \m ]
 ;
 
 -- ------------------------------------------------------------------------------

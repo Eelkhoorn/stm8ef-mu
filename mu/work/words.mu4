@@ -1,0 +1,149 @@
+loading words
+
+hex
+
+70  constant @ram
+400 @ram - constant #ram
+@ram image-region r-region
+r-region h @ ram-pointer ! 
+86a8 constant @flash
+a000 @flash - constant #flash
+@flash  image-region f-region
+f-region h @ flash-pointer !
+
+__meta
+
+target-compiler
+
+8196 goto  : (+loop) ; [r]
+81B9 goto  : LEAVE ; [r]
+81C0 goto  : donxt ; [r]
+81D1 goto  : ?branch ; [r]
+81DB goto  : branch ; [r]
+8263 goto  : R> ; [r]
+8270 goto  : doVarPtr ; [r]
+8275 goto  : doVar ; [r]
+827F goto  : >R ; [r]
+85AB goto  : rp! ; [r]
+
+target
+
+80a9 goto  : OUT! ;
+80b7 goto  : ADC! ;
+80c8 goto  : ADC@ ;
+811c goto  : TIM ;
+8122 goto  : BG ;
+8127 goto  : 'BOOT ;
+812d goto  : COLD ;
+8178 goto  : ?RX ;
+8184 goto  : TX! ;
+8190 goto  : ?KEY ;
+8193 goto  : EMIT ;
+81e1 goto  : EXECUTE ;
+81e6 goto  : EXIT ;
+81e9 goto  : 2! ;
+81f6 goto  : 2@ ;
+8203 goto  : 2C! ;
+8210 goto  : 2C@ ;
+821c goto  : B! ;
+8239 goto  : @ ;
+8240 goto  : ! ;
+8250 goto  : C@ ;
+825a goto  : C! ;
+8277 goto  : Y> ;
+827b goto  : R@ ;
+828a goto  : NIP ;
+828e goto  : DROP ;
+8295 goto  : 2DROP ;
+8299 goto  : DUP ;
+829e goto  : SWAP ;
+82ac goto  : OVER ;
+82b3 goto  : I ;
+82b6 goto  : UM+ ;
+82bd goto  : + ;
+82ca goto  : XOR ;
+82d5 goto  : AND ;
+82e0 goto  : OR ;
+82eb goto  : 0< ;
+82f4 goto  : - ;
+82f9 goto  : A> ;
+8301 goto  : A>KEY ;
+830a goto  : BL ;
+830e goto  : 0 ;
+8311 goto  : 1 ;
+8315 goto  : -1 ;
+831b goto  : ?DUP ;
+8325 goto  : ROT ;
+8330 goto  : 2DUP ;
+8335 goto  : DNEGATE ;
+834c goto  : = ;
+8352 goto  : U< ;
+835e goto  : < ;
+8372 goto  : MAX ;
+837b goto  : MIN ;
+8381 goto  : WITHIN ;
+8392 goto  : UM/MOD ;
+83cc goto  : M/MOD ;
+83fa goto  : /MOD ;
+8405 goto  : MOD ;
+840a goto  : / ;
+840f goto  : UM* ;
+845c goto  : * ;
+8461 goto  : M* ;
+8478 goto  : */MOD ;
+8483 goto  : */ ;
+8488 goto  : EXG ;
+848c goto  : 2/ ;
+8490 goto  : 2* ;
+8494 goto  : 2- ;
+8499 goto  : 2+ ;
+849e goto  : 1- ;
+84a2 goto  : 1+ ;
+84a6 goto  : DOXCODE ;
+84b2 goto  : NOT ;
+84b6 goto  : NEGATE ;
+84ba goto  : ABS ;
+84c0 goto  : 0= ;
+84c8 goto  : PICK ;
+84d2 goto  : DEPTH ;
+84de goto  : +! ;
+84f5 goto  : COUNT ;
+8501 goto  : CMOVE ;
+8523 goto  : FILL ;
+853f goto  : ERASE ;
+8544 goto  : KEY ;
+8558 goto  : >Y ;
+855f goto  : >A ;
+8564 goto  : ABORT ;
+8569 goto  : PRESET ;
+856d goto  : ?STACK ;
+8575 goto  : QUIT ;
+857e goto  : C, ;
+8581 goto  : thisvar ;
+858c goto  : A@ ;
+8590 goto  : Y@ ;
+8595 goto  : docon ;
+859f goto  : sp! ;
+85a1 goto  : sp@ ;
+85a6 goto  : rp@ ;
+85b8 goto  : ULOCK ;
+85c6 goto  : LOCK ;
+85cb goto  : ULOCKF ;
+85d9 goto  : LOCKF ;
+85de goto  : SAVEC ;
+85e8 goto  : IRET ;
+
+61D 808B \f + goto
+
+meta
+
+30 constant MP
+32 constant USRHLD
+34 constant YTEMP
+36 constant USRIDLE
+38 constant OUTPUTS
+3A constant BGADDR
+3C constant TICKCNT
+
+ld work/words+
+
