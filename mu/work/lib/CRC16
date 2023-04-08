@@ -15,11 +15,11 @@ meta
       $A608 \m ,  --         LD      A,#8
       $54 \m c,   -- 1$:     SRLW    X
       $2407 \m ,  --         JRNC    2$
-      \f 1 \m c,  --         RRWA    X   ; XOR X,#0xA001
+      $01 \m c,   --         RRWA    X   ; XOR X,#0xA001
       $A801 \m ,  --         XOR     A,#0x01
-      \f 1 \m c,  --         RRWA    X
+      $01 \m c,   --         RRWA    X
       $A8A0 \m ,  --         XOR     A,#0xA0
-      \f 1 \m c,  --         RRWA    X
+      $01 \m c,   --         RRWA    X
       $4A \m c,   -- 2$:     DEC     A
       $26F3 \m ,  --         JRNE    1$
     

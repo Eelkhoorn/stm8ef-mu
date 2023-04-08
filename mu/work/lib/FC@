@@ -22,8 +22,8 @@ __meta
 comment ===
  Example
 
-ld werk/lib/FC!
-ld werk/lib/FC@
+ld work/lib/FC!
+ld work/lib/FC@
 
 -- double constants for extended address 0x010001
 $01   CONSTANT MSB

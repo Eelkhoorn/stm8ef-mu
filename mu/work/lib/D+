@@ -1,8 +1,8 @@
 -- D+             double maths utility word (C) RigTig 2017
 
-.ifndef (D+)
+.ifndef [D+]
 
-: (D+) ;
+: [D+] ;
 
 __meta
 

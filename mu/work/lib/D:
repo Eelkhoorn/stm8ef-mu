@@ -1,18 +1,19 @@
-.ifndef (D/)
+.ifndef (D:)
 
-: (D/) ;
+: (D:) ;
+
 --  unsigned divide of two double numbers
 
 flash
 
-ld werk/lib/D@
-ld werk/lib/D!
-ld werk/lib/D-
-ld werk/lib/D+
-ld werk/lib/D<
-ld werk/lib/D*
-ld werk/lib/BF@
-ld werk/lib/BF!
+ld work/lib/D@
+ld work/lib/D!
+ld work/lib/D-
+ld work/lib/D+
+ld work/lib/D<
+ld work/lib/D*
+ld work/lib/BF@
+ld work/lib/BF!
 
 __meta
 flash
@@ -59,8 +60,6 @@ VARIABLE R 2 allotr
 	then
 ;
 
-.then
-
 comment ===
 
 --  https://en.wikipedia.org/wiki/Division_algorithm
@@ -77,3 +76,5 @@ for i := n − 1 .. 0 do  -- Where n is number of bits in N
   end
 end
 ===
+
+.then

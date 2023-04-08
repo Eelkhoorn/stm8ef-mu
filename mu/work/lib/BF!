@@ -27,7 +27,7 @@ __meta
 : LEBF! ( b a n -- )
   SR3A ( n/8 | A:n%8 )
   [ $88 c,        --         PUSH    A
-   here  ]  +         --         _BFS:
+   here  ] +         --         _BFS:
   [ $84  c,  ]   --         POP     A
   A> ( b a n )  B! 
 ;
@@ -38,6 +38,6 @@ __meta
   SR3A ( n/8 | A:n%8 )
   [ $88 c, ]      --         PUSH    A
   1 XOR [         --   Big Endian byte order
-  here $20 c, \f - \f 2 \f -  c,  --    JRA     _BFS
+  here $20 c, - 2 -  c,  --    JRA     _BFS
  
 .then

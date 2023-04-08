@@ -33,7 +33,7 @@ __meta
   $89 c,           --         PUSHW   X               ; temp
   $93 c,           --         LDW     X,Y
   $EE04 ,          --         LDW     X,(4,X)         ; get address
-  $72FB , \f 1 c,  --         ADDW    X,(1,SP)        ; add offset to address
+  $72FB , $01 c,   --         ADDW    X,(1,SP)        ; add offset to address
   $51 c,           --         EXGW    X,Y
   $EF02 ,          --         LDW     (2,X),Y         ; put addr for BTJT
   $9085 ,          --         POPW    Y               ; pop temp

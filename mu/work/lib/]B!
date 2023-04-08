@@ -6,7 +6,7 @@ meta
 
 --  Enable the compile mode and compile the code to set|reset the bit at addr.
 : ]B! ( 1|0 addr bit -- )
-     rot 0= \f 1 and swap \f 2* $10  \f +  \f + $72 \m c, \m c, \m , \m ]
+     rot 0= 1 and swap 2* $10  +  + $72 \m c, \m c, \m , \m ]
 ;
 
 .then

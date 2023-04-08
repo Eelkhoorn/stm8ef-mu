@@ -1,11 +1,11 @@
 -- D>            double maths utility word (C) RigTig 2017
 -- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
 
-.ifndef (D>)
+.ifndef [D>]
 
-: (D>) ;
+: [D>] ;
 
-ld werk/lib/D-
+ld work/lib/D-
 
 __meta
 

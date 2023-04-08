@@ -219,6 +219,8 @@ forth
 -- create parent: n ( number of cells to be compiled in child word) t-create parent-name [target words] t-does ;
 -- create child:  n0 n1 ... n parent-name child-name
 
+forth
+variable cre-n
 target-compiler
 : ;h \tc ; \m __host  ]  ;
 : t-does
@@ -227,9 +229,3 @@ target-compiler
 forth
 : t-create ( n)
    create ( n) , \m here , p, (thisvar) \m ] ;
-
-meta
-
-: constant constant ;
-: 2constant create , , does> dup @ swap cell+ @ \m literal ;
-forth

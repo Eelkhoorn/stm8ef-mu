@@ -7,7 +7,7 @@ meta
 -- STM8EF : ]Y<IF  like "( n ) Y@ < IF" with relative addressing  TG9541 - 201129
 -- ------------------------------------------------------------------------------
 
-#require >REL
+-- >REL resides in work/lib/JREQ
 -- like "n Y@ < IF" with relative addressing
 : ]Y<IF $90A3 \m , ( n ) \m , $2A \m c,  >REL ; -- CPW Y,#n  JRPL rel
 

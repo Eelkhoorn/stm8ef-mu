@@ -1,6 +1,6 @@
-.ifndef (D!)
+.ifndef [D!]
 
-: (D!) ;
+: [D!] ;
 
 __meta
 
