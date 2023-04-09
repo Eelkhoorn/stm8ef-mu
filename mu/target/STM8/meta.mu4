@@ -94,6 +94,12 @@ forth
    .target-runtime. addr@  ( last last-runtime)  over .target-runtime. addr!
    swap addr! ( link our new word to last-runtime) ;
 
+: [tc]
+   .forth. addr@ dup  addr@ .forth. addr! 
+   .variables. addr@ over .variables. addr!
+   swap addr!
+;
+
 ( Look up a label or forward-reference variable, and execute it to push
   its value or address.)
 
@@ -219,8 +225,6 @@ forth
 -- create parent: n ( number of cells to be compiled in child word) t-create parent-name [target words] t-does ;
 -- create child:  n0 n1 ... n parent-name child-name
 
-forth
-variable cre-n
 target-compiler
 : ;h \tc ; \m __host  ]  ;
 : t-does
@@ -229,3 +233,10 @@ target-compiler
 forth
 : t-create ( n)
    create ( n) , \m here , p, (thisvar) \m ] ;
+
+meta
+-- : d+ v+ over "fffe > if 0 1 v+ then ;
+-- : constant constant ;
+: 2constant create , , does> 2@ swap  \m literal ;
+
+forth

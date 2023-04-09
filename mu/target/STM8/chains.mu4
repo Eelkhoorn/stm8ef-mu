@@ -74,6 +74,7 @@ forth  decimal
         sealed .target.           ( the target words - like `forth' on the host)
 .target. chain .target-runtime.   ( compile-only target words)
    .lex. chain .target-compiler.  ( the `meta' version of .compiler.)
+sealed .variables.
 
 : meta                         .meta. definitions ;
 : definer                   .definer. definitions ;
@@ -82,6 +83,7 @@ forth  decimal
 : target                     .target. definitions ;
 : target-runtime     .target-runtime. definitions ;
 : target-compiler   .target-compiler. definitions ;
+: variables               .variables. definitions ;
 
 ( XXX Do we need all of these?)
 compiler
@@ -178,6 +180,7 @@ defer __meta  ( will be either __building or __chatting)
 -:  ."  (building)" ;
 -:
          .meta. find  if  execute  ^  then  ( labels are in .meta.)
+    .variables. find  if  execute  ^  then
         .forth. find  if  execute  ^  then
                                             number ;
 mode __building
@@ -202,6 +205,7 @@ defer remote
 -:
         ( NOTE: if we want to remove .forth., replace it with .lex. .)
        .target. find  if  execute  remote  ^  then  ( execute on target)
+    .variables. find  if  execute          ^  then
          .meta. find  if  execute          ^  then  ( labels are in .meta.)
         .forth. find  if  execute          ^  then
                                                      target-number ;
@@ -236,16 +240,18 @@ mode __scripting
 mode __definer-colon
 : __d __definer-colon ;
 
-
 defer target-literal   ( compile a target literal)
 defer target-compile,  ( compile a target word into a colon definition)
 
 -:  ."  (compiling a target colon word)"  ;
 -:
    .target-compiler. find  if  execute                   ^  then
+         .variables. find  if  execute                   ^  then
     .target-runtime. find  if  execute  target-compile,  ^  then
            .equates. find  if  execute  target-literal   ^  then
               .meta. find  if  execute  target-literal   ^  then
              .forth. find  if  execute  target-literal   ^  then
                                         target-number target-literal ;
+dup constant comp     ( used in VARIABLE to check wether we are in compile mode)
 mode __target-colon
+
