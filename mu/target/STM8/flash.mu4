@@ -63,6 +63,12 @@ hex
    \t 2DROP remote
 ;
 
+: eeprom-image
+   h preserve  eeprom region ( a u)  
+   ?clobbering-loader t.eeprom-begin  flash-region  t.eeprom-end
+   \t 2DROP remote
+;
+
 
 ( Verifying that host and target images are the same.)
 

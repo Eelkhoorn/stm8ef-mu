@@ -59,7 +59,9 @@ hex
     c.setup-chunk  dup c.write-byte for  m* >b next  ;
 
 : c.flash-begin  \t ULOCKF  remote  ;
-: c.flash-end    \t LOCKF remote  ;
+: c.flash-end    \t LOCKF   remote  ;
+: c.eeprom-begin \t ULOCK   remote  ;
+: c.eeprom-end   \t  LOCK   remote  ;
 : c.erase    ( a)  ( \t WIPE remote) ;
 : c.program  ( buf a u) 
    push ( u)
@@ -91,5 +93,6 @@ forth
 
 : chat   ( this defines the t._____ words from common/interact.mu4)
    chat-via  c.hello  c.get-sp  c.run  c.set-sp ( c.dpush) c.read  c.write
-   c.flash-begin  c.flash-end  c.erase  c.return   c.program   c.idle  c.resync
+   c.flash-begin  c.flash-end  c.eeprom-begin c.eeprom-end 
+   c.erase  c.return   c.program   c.idle  c.resync
 ;

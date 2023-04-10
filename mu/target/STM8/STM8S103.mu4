@@ -2,7 +2,7 @@
 
   Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
 
-( Definitions for STM8S103.)
+loading  Definitions for STM8S103
 decimal
 
 #64 constant /page
@@ -18,7 +18,13 @@ constant baud-rate
 
 1 serial-timeout
 
-ld target/STM8/words
+"4000  constant @eeprom
+#640 constant #eeprom
+@eeprom image-region e-region
+e-region h @ eeprom-pointer ! 
+
+
+ld target/STM8/words.mu4
 
 ( First, a few defining words, which we'll use to load the "equates".)
 : equ     ( offset)  current preserve  .equates. definitions  constant ;

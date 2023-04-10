@@ -26,6 +26,8 @@ chat-cmd t.read     ( buf a u)
 chat-cmd t.write    ( buf a u)
 chat-cmd t.flash-begin
 chat-cmd t.flash-end
+chat-cmd t.eeprom-begin
+chat-cmd t.eeprom-end
 chat-cmd t.erase    ( a)
 chat-cmd t.return
 chat-cmd t.program  ( buf a u)
@@ -103,8 +105,10 @@ sp0 tsp !
 variable /chunk
 variable ram-pointer
 variable flash-pointer
+variable eeprom-pointer
 : ram ram-pointer @ h ! ;
 : flash flash-pointer @ h ! ;
+: eeprom eeprom-pointer @ h ! ;
 
 : copy-chunk  ( 'target len - 'target+len)
    -- cr ." copy-chunk "  2dup swap u. u.
