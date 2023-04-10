@@ -1,6 +1,6 @@
 .ifndef (I2ISR)
 
-: (I@ISR) ;
+: (I2ISR) ;
 
 loading I2C ISR
 

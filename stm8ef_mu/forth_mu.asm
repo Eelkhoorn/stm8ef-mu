@@ -170,7 +170,7 @@
 
         ; STM8 device specific include (provided by file in board folder)
         ; sets "TARGET" and memory layout
-        .include        "muforth_inc/target.inc"
+        .include        "muforth-inc/target.inc"
 
         ; STM8 Flash Block Size (depends on "TARGET")
         .ifeq   (TARGET - STM8S_LOD) * (TARGET - STM8L_101) * (TARGET - STM8L_LOD)
@@ -196,7 +196,7 @@
         ; Note: add defaults for new features here
         ;       and configure them in globconf.inc
 
-        .include  "muforth_inc/defconf.inc"
+        .include  "muforth-inc/defconf.inc"
 
         ;********************************************
         ;******  4) Device dependent features  ******
@@ -369,7 +369,7 @@ _TRAP_Handler:
 ;       Includes for board support code
 ;       Board I/O initialization and E/E mapping code
 ;       Hardware dependent words, e.g.  BKEY, OUT!
-        .include "muforth_inc/boardcore.inc"
+        .include "muforth-inc/boardcore.inc"
 
 ;       ADC routines depending on STM8 family
         .include "stm8_adc.inc"
@@ -378,10 +378,10 @@ _TRAP_Handler:
         .include "board_io.inc"
 
 ;       Simulate serial interface code
-        .include "muforth_inc/sser.inc"
+        .include "muforth-inc/sser.inc"
 
 ;       Background Task: context switch with wakeup unit or timer
-        .include "muforth_inc/bgtask.inc"
+        .include "muforth-inc/bgtask.inc"
 UPPLOC = RAMPOOL + 30  ; PAD in Background task, growing down, 32 bytes
 
 ; ==============================================
@@ -432,7 +432,8 @@ COLD:
         LDW     UART_BRR1,X
         .ifne   HAS_RXUART*HAS_TXUART
         MOV     UART_CR2,#0x0C  ; Use UART1 full duplex
-        BSET    UART_CR2,#5     ; RIEN, enable RXNE interrupt 
+        BSET    UART_CR2,#5     ; RIEN, enable RXNE interrupt
+        MOV    ITC_SPR5,#0xCF   ; enable interrupts while chatting
 
         .ifne   HALF_DUPLEX
         .ifeq   (FAMILY - STM8S)
@@ -440,6 +441,9 @@ COLD:
         ; STM8S UART1, UART4: pull-up for PD5 single-wire UART
         BRES    PD_DDR,#5       ; PD5 GPIO input high
         BSET    PD_CR1,#5       ; PD5 GPIO pull-up
+        .endif
+        .if HAS_RXSIM
+        MOV    ITC_SPR6,#0x3F   ; enable interrupts while chatting
         .endif
         .ifeq   (HALF_DUPLEX - 2)
         ; STM8S903 type Low Density devices can re-map UART-TX to PA3

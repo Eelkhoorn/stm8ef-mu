@@ -134,9 +134,8 @@ _TIM4_IRQHandler:
 
         ; Receive sequence complete
         MOV     TIM4RXBUF,TIM4RXREG ; save result
-.if MUFORTH
-        MOV     USR_6,USR_5      ; set flag
-.endif
+        MOV     USR_6,USR_5         ; set flag
+
         BSET    PSIM+CR2,#PNRX  ; enable PNRX external interrupt
         ; fall through
 
