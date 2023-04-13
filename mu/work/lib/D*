@@ -1,8 +1,10 @@
 -- unsigned multiply of double by single
 
-.ifndef [D*]
+.ifndef (D*)
 
-: [D*] ;
+: (D*) ;
+
+ld werk/lib/D+
 
 __meta
 

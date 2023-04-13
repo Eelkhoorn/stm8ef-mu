@@ -1,11 +1,11 @@
 -- D-            double maths utility word (C) RigTig 2017
 
-.ifndef [D-]
+.ifndef (D-)
 
-: [D-] ;
+: (D-) ;
 
 
-ld work/lib/D+
+ld werk/lib/D+
 
 __meta
 

@@ -14,7 +14,7 @@ meta
     $4D  \m c,  --     TNZ     A
     $2705 \m ,  --     JREQ    1$
     $77  \m c,  -- 2$: SRA     (X)
-    $6601 \ m,  --     RRC     (1,X)
+    $6601 \ m ,  --     RRC     (1,X)
     $4A  \m c,  --     DEC     A
     $26F8 \m ,  --     JRNE    2$
                 -- 1$:

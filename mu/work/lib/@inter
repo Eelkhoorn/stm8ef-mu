@@ -14,7 +14,7 @@ __meta
 
 -- @dif delta of x1-x0 or y1-y0
 -- difference of two values two cells apart, helper for @inter
-: dif@ ( a -- n )  OVER 2cell+  @ SWAP @ - ;
+: @dif ( a -- n )  OVER 2cell+  @ SWAP @ - ;
 
 -- find (X0,Y0)/(X1,Y1) in table, interpolate w/ saturation
 : @inter ( n a -- n )

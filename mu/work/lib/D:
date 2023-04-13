@@ -1,27 +1,26 @@
-.ifndef (D:)
+.ifndef (D/)
 
-: (D:) ;
-
+: (D/) ;
 --  unsigned divide of two double numbers
 
 flash
 
-ld work/lib/D@
-ld work/lib/D!
-ld work/lib/D-
-ld work/lib/D+
-ld work/lib/D<
-ld work/lib/D*
-ld work/lib/BF@
-ld work/lib/BF!
+ld werk/lib/D@
+ld werk/lib/D!
+ld werk/lib/D-
+ld werk/lib/D+
+ld werk/lib/D<
+ld werk/lib/D*
+ld werk/lib/BF@
+ld werk/lib/BF!
 
 __meta
 flash
 
-VARIABLE DEN 2 allotr
-VARIABLE Q 2 allotr
-VARIABLE N 2 allotr
-VARIABLE R 2 allotr
+VARIABLE $DEN$ 2 allotr
+VARIABLE $Q$ 2 allotr
+VARIABLE $N$ 2 allotr
+VARIABLE $R$ 2 allotr
 
 
 --  bitlength -1 of double @ a
@@ -37,28 +36,30 @@ VARIABLE R 2 allotr
 ;
 
 --  helper for D/
-: hd/ R D@ DEN D@ ;
+: hd/ $R$ D@ $DEN$ D@ ;
 
 --  unsigned divide on doubles,
 --   return doubles for remainder and quotient
 : D/ ( d1 d2  -- r q )
 	
-	0 DUP 2DUP Q D! R D!
-	DEN D! 
+	0 DUP 2DUP $Q$ D! $R$ D!
+	$DEN$ D! 
 	2DUP 0= SWAP 0= AND if
 		2DUP
 	else
-		N D!
-		0 N bl do R 2*!
-			N I BF@ R 0 BF!
+		$N$ D!
+		0 $N$ bl do $R$ 2*!
+			$N$ I BF@ $R$ 0 BF!
 			hd/ D< NOT if
-				hd/ D- R D!
-				1 Q I BF!
+				hd/ D- $R$ D!
+				1 $Q$ I BF!
 			then
 		-1 +loop
-		R D@ Q D@
+		$R$ D@ $Q$ D@
 	then
 ;
+
+.then
 
 comment ===
 
@@ -76,5 +77,3 @@ for i := n − 1 .. 0 do  -- Where n is number of bits in N
   end
 end
 ===
-
-.then

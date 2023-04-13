@@ -39,8 +39,13 @@ meta
 
 : ]C@IF ( -- ) $C6 \m c, \m ,  ( LD  A,a ) \m ] \m JREQ ;
 
-meta
 -- compile relative address to mark
 : ]<M \m here - 1 - \m c, \m ] ;
+
+-- wait until bit reset
+: ]BRU ( reg bit ) 2* $7200 + \m , \m , \m ]<M ;
+
+-- wait until bit set
+: ]BSU ( reg bit ) 2* $7201 + \m , \m , \m ]<M ;
 
 .then

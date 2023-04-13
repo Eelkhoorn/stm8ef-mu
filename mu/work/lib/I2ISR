@@ -2,7 +2,7 @@
 
 : (I2ISR) ;
 
-loading I2C ISR
+loading I2C ISR !! Don't forget to flash the interrupt vector !!
 
 comment ===
 STM8 eForth: I2C Master ISR for the STM8 I2C peripheral        TG9541 - 201205
@@ -40,17 +40,20 @@ Usage notes:
     while CPOINT points to I2C slave "command" or "address" data
 ===
 
-ld work/lib/]B!
-ld work/lib/]C!
-ld work/lib/]B?
+ld werk/lib/]B!
+ld werk/lib/]C!
+ld werk/lib/]B?
 
 --  Load Forth IF .. ELSE .. THEN with relative addressing
-ld work/lib/JREQ
+ld werk/lib/JREQ
+
+forth
+ram
 
 __meta
-flash
 
-VARIABLE I2ISR  9 allotr    --  the register file
+here constant I2ISR  #11 allot    --  the register file
+flash
 
 --  ready?, CCOUNT, TCOUNT and RCOUNT ans BUSY back to zero?
 --    or error lagged.
@@ -82,7 +85,6 @@ VARIABLE I2ISR  9 allotr    --  the register file
 --  I2C Master ISR headerless code
 : I2C_int
   SAVEC
-
   --  EV5 START has just been issued - trigger sending ADDR and R/W
   [ I2C_SR1 0 ( SB ) ]B@IF [
     $C6 c, I2C_DR ,          --  LD   A,I2C_DR  ; reset SB
@@ -99,7 +101,6 @@ VARIABLE I2ISR  9 allotr    --  the register file
     THEN
     [ $9FC7 , I2C_DR , ]      --  LD A,XL  LD I2C_DR,A  ; send device address
   THEN
-
   --  EV6 ADDR has just been sent - trigger next steps or STOP
   [ I2C_SR1 1 ( ADDR ) ]B@IF [  --  EV6
     $C6 c, I2C_SR1 ,         --  CLR ADDR by reading SR1
@@ -121,7 +122,6 @@ VARIABLE I2ISR  9 allotr    --  the register file
     THEN
     [ 1 I2C_ITR 2 ]B!  --  enable buffer interrupt
   THEN
-
   --  EV7 reveive bytes
   [ I2C_SR1 6 ( RXNE ) ]B@IF [
     $C6 c, I2C_DR ,          --  LD   A,I2C_DR
@@ -144,7 +144,6 @@ VARIABLE I2ISR  9 allotr    --  the register file
       $84 c, ]               --  POP  A
     THEN
   THEN
-
   --  EV8_1 and EV8 transmit 1st and following bytes
   [ I2C_SR1 7 ( TXE ) ]B@IF
     [ I2ISR 2 + ]C@IF [     --  CCOUNT C@
@@ -182,7 +181,6 @@ VARIABLE I2ISR  9 allotr    --  the register file
       [ 1 I2C_CR2 1 ]B!    --  STOP clears TXE
     THEN
   THEN
-
   --  check error events - flag error and abort transmission
   [ I2C_SR2 ]C@IF [
       $4F c,                 --  CLR  A
@@ -192,9 +190,8 @@ VARIABLE I2ISR  9 allotr    --  the register file
       $C7 c, I2ISR , ]       --  LD   I2ISR,A   ; flag error
       [ 1 I2C_CR2 1 ]B!      --  release the bus
   THEN
-
   IRET
-; -- INT_I2C !flash
+; -- ' I2C_int INT_I2C !flash
 
 
 : I2I ( -- ) --  initialize peripheral - init values by @eelkhoorn
@@ -217,11 +214,12 @@ VARIABLE I2ISR  9 allotr    --  the register file
 VARIABLE CREG 2 allotr 	--  command register, 4 bytes
 
 --  send n (1..4) bytes to slave a
-: snd ( bn .. b1 b0 n a -- )	--  b0 =0 for commands, b0=$40 for data
+: snd ( bn .. b1 b0 n a -- )	--  b0 = 0 for commands, b0=$40 for data
 	>R DUP [ I2ISR 2 + ] literal C!
 	0 do CREG I + C! loop
 	CREG [ I2ISR 5 + ] literal !
 	R> I2S
 ;
 
+ram
 .then
