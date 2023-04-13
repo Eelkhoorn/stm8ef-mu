@@ -1,9 +1,13 @@
 #!/bin/bash
+# restore original stm8ef files
+# remove muforth folders
+
 stm8=$(readlink f stm8ef)
 muf=$(readlink -f muforth)
+
 for i in $(find "$stm8" -name *_original)
-#do echo "$i  ${i%_original}"
 do mv -f "$i" "${i%_original}"
 done
+
 rm "$muf"/mu/tools "$muf"/mu/work 
 rm -R "$muf"/mu/target/STM8
