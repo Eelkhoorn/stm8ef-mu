@@ -13,7 +13,7 @@ This repository provides some files that enables muforth (https://github.com/nim
 * hook up an uart interface device, make sure **muforth/mu/serial-target** points to your uart device
 * start muforth from muforth/mu:  
 for MINDEV : &emsp; &emsp; **./muforth -f target/STM8/build.mu4 -f work/aliases**   
-for W1209-FD: &emsp; **./muforth -d W1209 -f target/STM8/build.mu4 -f work/aliases** 
+for W1209-FD: &emsp; **./muforth -d W1209 -f target/STM8/build.mu4 -f work/aliases**  
 for STM8L051F3  &emsp; **./muforth -d STM8L -f target/STM8/build.mu4 -f work/aliases** 
 * in muforth: **chat** starts uart communication with the target
   
