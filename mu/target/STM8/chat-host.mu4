@@ -72,7 +72,7 @@ meta
 
 : ." ( a --) 
    spy preserve spy off
-   dup \m c@ >r pad swap 1 + r@ t.read pad r> type ;
+   dup image-c@ >r pad swap 1 + r@ t.read pad r> type ;
 
 
 : string,  ( a u)

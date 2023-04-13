@@ -94,8 +94,8 @@ forth
    .target-runtime. addr@  ( last last-runtime)  over .target-runtime. addr!
    swap addr! ( link our new word to last-runtime) ;
 
-: [tc]
-   .forth. addr@ dup  addr@ .forth. addr! 
+: [var]    ( move last .meta. word into .variables.)
+   .meta. addr@ dup  addr@ .meta. addr! 
    .variables. addr@ over .variables. addr!
    swap addr!
 ;
@@ -224,6 +224,9 @@ forth
 -- syntax:
 -- create parent: n ( number of cells to be compiled in child word) t-create parent-name [target words] t-does ;
 -- create child:  n0 n1 ... n parent-name child-name
+-- i.e.: forth 2 t-create plus DUP @ SWAP 2+ + t-does 
+--             33 44 plus QQ
+--       chat QQ -> 77
 
 target-compiler
 : ;h \tc ; \m __host  ]  ;
@@ -235,8 +238,6 @@ forth
    create ( n) , \m here , p, (thisvar) \m ] ;
 
 meta
--- : d+ v+ over "fffe > if 0 1 v+ then ;
--- : constant constant ;
 : 2constant create , , does> 2@ swap  \m literal ;
-
+: create meta create  ;
 forth

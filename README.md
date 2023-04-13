@@ -1,20 +1,18 @@
 # STM8EF-MU
-This repository provides some files that enables muforth (https://github.com/nimblemachines/muforth) to be used in conjunction with stm8ef (https://github.com/TG9541/stm8ef). It makes use of Thomas' stm8ef kernel, but with muforth the interpreter and compiler words are no longer needed and neither are the name fields and link fields. They are stripped off, this results in a significantly smaller kernel. The muforth STM8 assembler/disassembler doesn't exist (yet), instead copies of the S08 versions are loaded. The flash area is set to start after the kernel, so muforth's **flash-image** starts flashing from there and leaves the kernel unchanged. To flash interrupt vectors, use **!flash** from aliases.  
+This repository provides some files that enables muforth (https://github.com/nimblemachines/muforth) to be used in conjunction with stm8ef (https://github.com/TG9541/stm8ef). It makes use of Thomas' stm8ef kernel, but in muforth the interpreter and compiler words are no longer needed and neither are the name fields and link fields. They are stripped off, this results in a significantly smaller kernel. The muforth STM8 assembler/disassembler doesn't exist (yet), instead copies of the S08 versions are loaded. The flash area is set to start after the kernel, so muforth's **flash-image** starts flashing from there and leaves the kernel unchanged. To flash interrupt vectors, use **!flash** from aliases.  
 
 ### Procedure
 * install muforth and compile from muforth/src: **./configure && make**
-* move the folders in **mu** to **muforth/mu/**
 * install stm8ef
-* in stm8ef, rename forth.asm:  **mv forth.asm forth_original.asm**
-* move the folders in **stm8ef_mu** to **stm8ef/**
-* check wether the symlink stm8ef/muforth_inc/boardcore.inc points to the right file
-* run **make BOARD=MINDEV flash** or **make BOARD=W1209-FD flash**
+* make sym links to your stm8ef and muforth folders: **ln -s /home/$USER/muforth**, **ln -s /home/$USER/stm8ef**
+* do **./run** , this makes backup files (*_original) of certain stm8ef files and replaces them with sym links. **./undo** restores the backup files.
+* in stm8ef run **make BOARD=...... flash**
 * make a sym link of **stm8ef/out/BOARD/forth.rst** in **muforth/mu/work**
-* check the link in muforth/mu/tools/kernel.sh
-* run **work/kernel.sh** to update the words file
+* check the symlink in muforth/mu/tools/kernel.sh, it should point to muforth/mu/target/STM8/words.mu4
+* in mu/work run **./kernel.sh** to update the  file (containing the kernel words) and the link in muforth/mu/target/STM8
 * hook up an uart interface device, make sure **muforth/mu/serial-target** points to your uart device
 * start muforth from muforth/mu:  
-for MINDEV: &emsp; &emsp; **./muforth -f target/STM8/build.mu4 -f work/aliases**   
+for MINDEV and STM8L051F3: &emsp; &emsp; **./muforth -f target/STM8/build.mu4 -f work/aliases**   
 for W1209-FD: &emsp; **./muforth -d W1209 -f target/STM8/build.mu4 -f work/aliases**   
 * in muforth: **chat** starts uart communication with the target
   
@@ -31,7 +29,7 @@ Muforth can be put in different modes. A mode defines how input commands are int
 Muforth has several dictionaries, ie .forth. .meta. .target. .target-runtime. .equates. These are defined in chains.mu4. The mode defines which dictionaries are searched and what happens when a word is found. Dictionaries can be chained to each other. The variable **current** points to the active dictionary. New defined words are added to the active dictionary. Immediate words are in a separate dictionary: .compiler. for immediate host words and .target-compiler. for immediate target words.
 
 ### Target memory images
-Muforth keeps images of the target memories on the host. For STM8 there are two images: one for flash and one for ram. The 2variable **dp** holds the start address and current pusition of the active image. Words to switch between images: **ram** and **flash**. Flashing the image to the target is done by **flash-image**.
+Muforth keeps images of the target memories on the host. For STM8 there are three images: for ram, flash eeprom. The 2variable **dp** holds the start address and current pusition of the active image. Words to switch between images: **ram** , **flash** and **eeprom**. Copying the image to the target flash is done by **flash-image**, to eeprom by **eeprom-image**.
 
 ### Communication over uart
 The word **chat** starts chatting with the target and puts muforth in chatting mode. Now words are searched in the .target. dictionary and executed on the target if found. When a new definition is started ( with **:** ) muforth is put in __target-colon mode and the new word is added to the .target. dictionary. If you want the word to be compile-only you have to execute [r] , right after the finishing **;** , this puts the last created word in .target-runtime.

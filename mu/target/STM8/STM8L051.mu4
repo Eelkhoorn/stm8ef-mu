@@ -1,0 +1,31 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading  Definitions for STM8L051
+decimal
+
+#64 constant /page
+
+( IMPORTANT: these values are hardcoded in forth.asm)
+#115200 constant baud-rate
+1 serial-timeout
+"340 constant @flashbuf  ( in chat.asm that is included in forth.asm)
+
+"1000  constant @eeprom
+#256 constant #eeprom
+@eeprom image-region e-region
+e-region h @ eeprom-pointer ! 
+
+
+ld target/STM8/words.mu4
+
+( First, a few defining words, which we'll use to load the "equates".)
+: equ     ( offset)  current preserve  .equates. definitions  constant ;
+: vector  ( offset)  equ ;
+: reg     ( offset)  equ ;
+: |  \ -- ;  ( | ignores the bit-fields that follow each register name)
+: aka   .equates. chain' execute  equ ;  ( for making synonyms)
+
+
+ld target/STM8/STM8L051.efr
