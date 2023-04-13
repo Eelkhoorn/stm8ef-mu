@@ -17,7 +17,12 @@ ld target/STM8/dis.mu4
 
 ld target/STM8/meta.mu4       ( metacompiler, baby!)
 ld target/STM8/interact.mu4   ( interaction with target)
+
+.ifdef STM8L
+ld target/STM8/STM8L051.mu4
+.else
 ld target/STM8/STM8S103.mu4
+.then
 
 ld target/STM8/flash.mu4
 ld target/STM8/chat-host.mu4
