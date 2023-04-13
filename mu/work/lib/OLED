@@ -1,5 +1,5 @@
--- Driver for ssd1306 oled display 128x64 over i2c
--- (459 bytes)
+-- Driver for SSD1306 and SH1106 oled displays 128x64 over i2c
+-- (581 bytes)
 
 -- ssdi ( --) initialise i2c and ssd1306-display
 -- cls ( --) clear screen
