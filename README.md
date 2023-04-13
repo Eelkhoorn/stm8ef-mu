@@ -4,16 +4,18 @@ This repository provides some files that enables muforth (https://github.com/nim
 ### Procedure
 * install muforth and compile from muforth/src: **./configure && make**
 * install stm8ef
-* make sym links to your stm8ef and muforth folders: **ln -s /home/$USER/muforth**, **ln -s /home/$USER/stm8ef**
+* make sym links to your stm8ef and muforth folders:  
+**ln -s /home/$USER/muforth**  
+**ln -s /home/$USER/stm8ef**
 * do **./run** , this makes backup files (*_original) of certain stm8ef files and replaces them with sym links. **./undo** restores the backup files.
 * in stm8ef run **make BOARD=...... flash**
 * make a sym link of **stm8ef/out/BOARD/forth.rst** in **muforth/mu/work**
 * check the symlink in muforth/mu/tools/kernel.sh, it should point to muforth/mu/target/STM8/words.mu4
-* in mu/work run **./kernel.sh** to update the  file (containing the kernel words) and the link in muforth/mu/target/STM8
+* in mu/work run **./kernel.sh** to update the file words (containing the kernel words) and the link in muforth/mu/target/STM8
 * hook up an uart interface device, make sure **muforth/mu/serial-target** points to your uart device
 * start muforth from muforth/mu:  
-for MINDEV : &emsp; &emsp; **./muforth -f target/STM8/build.mu4 -f work/aliases**   
-for W1209-FD: &emsp; **./muforth -d W1209 -f target/STM8/build.mu4 -f work/aliases**  
+for MINDEV : &emsp; &emsp; &emsp; **./muforth -f target/STM8/build.mu4 -f work/aliases**   
+for W1209-FD: &emsp; &emsp; **./muforth -d W1209 -f target/STM8/build.mu4 -f work/aliases**  
 for STM8L051F3  &emsp; **./muforth -d STM8L -f target/STM8/build.mu4 -f work/aliases** 
 * in muforth: **chat** starts uart communication with the target
   
