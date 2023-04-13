@@ -42,7 +42,7 @@ Files can be loaded on the command line (**./muforth -f filename**) or from with
 + **du**  ( a) inspects the target image on the host (and the target memory if in chat mode)
 
 ## Demo
-There is a simple timer application for W1209 included that can be flashed:  
+There is a simple timer application for W1209-FD included that can be flashed:  
 Start muforth from muforth/mu
 + ./muforth -d W1209 -f target/STM8/build.mu4 -f work/timer -f work/aliases  
 
