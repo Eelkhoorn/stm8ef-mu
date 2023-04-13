@@ -150,7 +150,7 @@ VARIABLE radixx
 -- display counted string @ a
 : tt# ( a)
    1+ DUP 1- C@ #21 /MOD ( a rem fac) SWAP >R
-   DUP if 1- for DUP #21 t# #21 + 0 ROW 1+ pc next #21 + then
+   DUP if 1- for DUP #21 t# #21 + 0 ROW 1+ pc next then
    R> t#
 ;
 
