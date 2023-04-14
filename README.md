@@ -16,7 +16,10 @@ This repository provides some files that enables muforth (https://github.com/nim
 * start muforth from muforth/mu:  
 for MINDEV : &emsp; &emsp; &emsp; **./muforth -f target/STM8/build.mu4 -f work/aliases**   
 for W1209-FD: &emsp; &emsp; **./muforth -d W1209 -f target/STM8/build.mu4 -f work/aliases**  
-for STM8L051F3  &emsp; **./muforth -d STM8L -f target/STM8/build.mu4 -f work/aliases** 
+for STM8L051F3  &emsp; **./muforth -d STM8L -f target/STM8/build.mu4 -f work/aliases**  
+muforth commandline options:  
+  **-d W1209** sets baud rate to 57600 in stead of 115200
+  **-d STML** loads STM8L in stead of STM8S equates
 * in muforth: **chat** starts uart communication with the target
   
 ## Muforth
@@ -32,7 +35,7 @@ Muforth can be put in different modes. A mode defines how input commands are int
 Muforth has several dictionaries, ie .forth. .meta. .target. .target-runtime. .equates. These are defined in chains.mu4. The mode defines which dictionaries are searched and what happens when a word is found. Dictionaries can be chained to each other. The variable **current** points to the active dictionary. New defined words are added to the active dictionary. Immediate words are in a separate dictionary: .compiler. for immediate host words and .target-compiler. for immediate target words.
 
 ### Target memory images
-Muforth keeps images of the target memories on the host. For STM8 there are three images: for ram, flash eeprom. The 2variable **dp** holds the start address and current pusition of the active image. Words to switch between images: **ram** , **flash** and **eeprom**. Copying the image to the target flash is done by **flash-image**, to eeprom by **eeprom-image**.
+Muforth keeps images of the target memories on the host. For STM8 there are three images: for ram, flash eeprom. The 2variable **dp** holds the start address and current pusition of the active target memory. Words to switch between images: **ram** , **flash** and **eeprom**. Copying the image to the target flash is done by **flash-image**, to eeprom by **eeprom-image**.
 
 ### Communication over uart
 The word **chat** starts chatting with the target and puts muforth in chatting mode. Now words are searched in the .target. dictionary and executed on the target if found. When a new definition is started ( with **:** ) muforth is put in __target-colon mode and the new word is added to the .target. dictionary. If you want the word to be compile-only you have to execute [r] , right after the finishing **;** , this puts the last created word in .target-runtime.
