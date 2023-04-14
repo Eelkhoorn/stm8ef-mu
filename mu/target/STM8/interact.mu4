@@ -167,7 +167,7 @@ forth
       tsp @  over  ( n sp n)
       for  dup image-@  pop 2push  \m cell+  next ( starting with top, push to R)
       drop ( sp)
-      for  2pop push  next  ( pop from R to reverse order)
+      for  2pop push >16b next  ( pop from R to reverse order)
       0
    then  drop ;
 
@@ -182,7 +182,6 @@ forth
    drop
    tsp @ dup image+  swap r> \m cells  t.write  ( copy stack image to target)
    then ;
-
 
 : cont   >r stack> r> runwait  stack<  .regs ;
 -: ( cfa)  ( execute target word on stack)  ( pc!)  cont ;  is remote

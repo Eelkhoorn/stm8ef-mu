@@ -93,6 +93,7 @@ compiler
 : \eq  ( compile from equates)                  .equates. \chain ;
 : \t   ( compile from target/runtime)    .target-runtime. \chain ;
 : \tc  ( compile from target-compiler)  .target-compiler. \chain ;
+: \var ( compile from variables)              .variables. \chain ;
 forth
 
 : 'tr .target-runtime. chain' execute ;
@@ -196,6 +197,9 @@ now __building  is __meta
   Both __building and __chatting try, as a last resort, to find and execute
   words in .forth.)
 
+-- display decimal numbers stm8ef-wise
+: >16b radix @ #10 = if $7fff over < if invert $ffff and 1+ -1 * then then ;
+
 defer target-number    ( convert token to a number, specific to target)
 defer remote
 -:  error" tried to remotely execute a target word while not chatting" ;
@@ -208,7 +212,7 @@ defer remote
     .variables. find  if  execute          ^  then
          .meta. find  if  execute          ^  then  ( labels are in .meta.)
         .forth. find  if  execute          ^  then
-                                                     target-number ;
+                                  target-number >16b  ;
 mode __chatting
 
 
