@@ -1,13 +1,13 @@
--- Driver for SSD1306 and SH1106 oled displays 128x64 over i2c
--- (581 bytes)
+-- Driver for SH1106 oled displays 128x64 over i2c
+-- (630 bytes excl font)
 
 -- ssdi ( --) initialise i2c and ssd1306-display
 -- cls ( --) clear screen
 -- dtxt ( adr --)	display text compiled with $"
 -- Text has to be compiled before it can be displayed.
--- : txt $" text to be displayed" ;
--- txt dtxt will display "text to be displayed" on the oled screen.
--- d#	( n --) display number
+-- $" text to be displayed" constant txt
+-- txt tt# will display "text to be displayed" on the oled screen.
+-- n#	( n --) display number
 -- 1234 d#	will display "1234".
 
 -- The display has 8 pages (lines) of 128x8 dots. Positioning is done by sending display commands:
@@ -34,16 +34,7 @@
 --     - addr 7,8 : TPOINT transmit buffer pointer
 --     - addr 9,10: Receive buffer pointer
 
-." Choose between SH1106 ans SSD1306 OLED!   " 
-: SH1106 ;  ( uncomment in case of ssd1306)
-
-
 ld werk/lib/FONT
-
-.ifndef SH1106
-ld werk/lib/DIA	-- array with display initialisation commands for SSD1306
-.then
-
 ld werk/lib/I2ISR	-- i2c interrupt service routine
 
 $3c constant SSD  -- slave address
@@ -61,42 +52,52 @@ __meta
 
 VARIABLE LBF 4 allotr	-- letter buffer, 6 bytes
 VARIABLE COLROW
-VARIABLE count
+VARIABLE #count
 VARIABLE radixx
 
-: crh1 COLROW @ ;
-: crh2 $FF AND  ;
-
-: COL ( --c)
-   crh1 crh2 ;
-: ROW (  c)
-   crh1 EXG crh2 ;
+: SSD_snd SSD snd ;
 
 -- position cursor
-: pc  ( column row -- )
-	2DUP $100 * + COLROW !
+: PC  ( column row -- )
 	$B0 + SWAP
 --	 6 * 2+
 	$10 /MOD
 	$10 +
-	0 4 SSD snd
+	0 4 SSD_snd
 ;
+
+: crh1 COLROW @ ;
+: crh2 $FF AND  ;
+
+: ROW ( --c)
+   crh1 crh2 ;
+: COL ( -- c)
+   crh1 EXG crh2 ;
+   
+: CP! ( column row -- ) SWAP $100 * + COLROW ! ;
+
+: PC! 2DUP CP! PC ;
+
+: #ROW
+   COL #21 = if
+      0 ROW 1+ 
+      DUP 8 = if DROP 0  then PC!
+   then
+;
+
+: COL+ $100 COLROW +! #ROW ;
+
 
 -- send n bytes @ a to display buffer
 : sb ( a n -- )
 	TCOUNT C!
 	TPOINT !
-	$40 1 SSD snd
+	$40 1 SSD_snd
 ; 
 
 -- send display command
 : dcmd ( c -- )
-	0 2 SSD snd
-;
-
--- send double byte command
-: dcm2 ( b b -- )
-	0 3 SSD snd
+	0 2 SSD_snd
 ;
 
 -- Translates ASCII to address of bitpatterns:
@@ -118,28 +119,38 @@ VARIABLE radixx
 
 -- Display character:
 : drc  ( c --)
-   a>bp disp
+   a>bp disp COL+
 ;
 
 -- display digit
 : d# ( n -- )
-	d>bp disp 
+	d>bp disp COL+
 ;
 
 : n#h ( n -- di ... d0)
-   0 count !
+   0 #count !
    radixx @ >R 
    R@ #10 = if DUP 0< if #45 drc NEGATE then then
-   begin 1 count +! R@ /MOD $FFF AND DUP 0= until R> 2DROP
+   begin 1 #count +! R@ /MOD $FFF AND DUP 0= until R> 2DROP
 ;
+
+: ##### 4 for #35 drc next ;
+
 : n#
+   DUP $8000 = radixx @ #10 = AND if 
+   DROP #####  ; ] then
    n#h
-   count @ 0 do DUP #10 < if d# else $37 + drc then loop
+   #count @ 0 do DUP #10 < if d# else $37 + drc then loop
 ;
 
 -- spaces
 : spc  ( u --)
-	for FONT 6 sb next 
+	for FONT 6 sb  COL+ next 
+;
+
+-- counted string
+: str ( a -- a+1 c)
+   1+ DUP 1- C@
 ;
 
 -- display n characters @ a, n<22
@@ -147,30 +158,15 @@ VARIABLE radixx
 	0 do DUP C@ drc  1+ loop DROP
 ;
 
--- display counted string @ a
-: tt# ( a)
-   1+ DUP 1- C@ #21 /MOD ( a rem fac) SWAP >R
-   DUP if 1- for DUP #21 t# #21 + 0 ROW 1+ pc next then
-   R> t#
-;
-
--- clear page
-: cp
-	#22 spc
-;
-
 -- clear screen
 : cls
-	7 for 0 I pc cp next
+	0 0 7 for 2DUP PC $5500 #128 sb 1+ next DROP 0 PC!  
 ;
 
 -- Initialise display
 : SSDI  ( --)
    I2I
-.ifndef SH1106
-   DIA TPOINT ! #25 TCOUNT C!
-.then
-   0 1 SSD snd
+   0 1 SSD_snd
    #10 radixx !
    cls
    $af dcmd

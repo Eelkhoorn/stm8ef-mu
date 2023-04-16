@@ -1,7 +1,18 @@
 #!/bin/bash
-# check the sym link below!!
-symlink=/home/USER/muforth/mu/target/STM8/words.mu4
+# Compile the stm8ef kernel words for muforth
+# a sym link forth.rst must exist in the same directory as this script, 
+# pointing to stm8ef/out/BOARD/forth.rst
 
+# The link below must point to your muforth/mu/target/STM8/words.mu4
+symlink=/home/pi/build/muforth/mu/target/STM8/words.mu4
+
+file=$(readlink -f forth.rst)
+dir=${file%forth.rst}
+map=$dir*.map
+trap=$(awk '$2=="_TRAP_Handler" {print $1}' $map)
+TRAP="0x${trap#0000}"
+echo "_TRAP_Handler: "$TRAP
+export TRAP
 words="$(pwd)"/words.mu4
 SOURCE=${BASH_SOURCE[0]}
 while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
