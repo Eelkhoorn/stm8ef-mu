@@ -2,9 +2,9 @@
 
 : (D+!) ;
 
-ld werk/lib/D@
-ld werk/lib/D+
-ld werk/lib/D!
+ld work/lib/D@
+ld work/lib/D+
+ld work/lib/D!
 
 __meta
 

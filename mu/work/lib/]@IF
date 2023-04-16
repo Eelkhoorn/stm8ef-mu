@@ -7,7 +7,7 @@ meta
 -- STM8EF : ]@IF  like "LITERAL @ IF" with relative addressing    TG9541 - 201129
 -- ------------------------------------------------------------------------------
 
-ld werk/lib/JREQ
+ld work/lib/JREQ
 : ]@IF  ( -- ) $90CE \m , \m , ( LDW Y,a ) \m ]  \m JREQ ;
 
 comment ===

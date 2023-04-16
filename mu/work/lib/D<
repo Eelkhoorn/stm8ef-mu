@@ -3,8 +3,8 @@
 : (D<) ;
 
 
-ld werk/lib/2SWAP
-ld werk/lib/D>
+ld work/lib/2SWAP
+ld work/lib/D>
 
 __meta
 

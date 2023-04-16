@@ -5,14 +5,14 @@
 
 flash
 
-ld werk/lib/D@
-ld werk/lib/D!
-ld werk/lib/D-
-ld werk/lib/D+
-ld werk/lib/D<
-ld werk/lib/D*
-ld werk/lib/BF@
-ld werk/lib/BF!
+ld work/lib/D@
+ld work/lib/D!
+ld work/lib/D-
+ld work/lib/D+
+ld work/lib/D<
+ld work/lib/D*
+ld work/lib/BF@
+ld work/lib/BF!
 
 __meta
 flash

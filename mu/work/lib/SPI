@@ -6,8 +6,8 @@
 -- derived from al177/stm8ef/HC12/boardcore.inc
 -- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
 
-ld werk/lib/]C!
-ld werk/lib/]B!
+ld work/lib/]C!
+ld work/lib/]B!
 
 __meta
 flash
@@ -58,7 +58,7 @@ Example:
 flash
 
 -- non-e4thcom / codeload.py: include file contents here
---ld werk/hw/spi.fs
+--ld work/hw/spi.fs
 
 ram
 

@@ -38,9 +38,9 @@
 : SH1106 ;  ( uncomment in case of ssd1306)
 
 
-ld werk/lib/FONT
-ld werk/lib/DIA	-- array with display initialisation commands for SSD1306
-ld werk/lib/I2ISR	-- i2c interrupt service routine
+ld work/lib/FONT
+ld work/lib/DIA	-- array with display initialisation commands for SSD1306
+ld work/lib/I2ISR	-- i2c interrupt service routine
 
 $3c constant SSD  -- slave address
 

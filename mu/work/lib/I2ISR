@@ -40,12 +40,12 @@ Usage notes:
     while CPOINT points to I2C slave "command" or "address" data
 ===
 
-ld werk/lib/]B!
-ld werk/lib/]C!
-ld werk/lib/]B?
+ld work/lib/]B!
+ld work/lib/]C!
+ld work/lib/]B?
 
 --  Load Forth IF .. ELSE .. THEN with relative addressing
-ld werk/lib/JREQ
+ld work/lib/JREQ
 
 forth
 ram

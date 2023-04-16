@@ -4,7 +4,7 @@
 
 : (D*) ;
 
-ld werk/lib/D+
+ld work/lib/D+
 
 __meta
 

@@ -34,8 +34,8 @@
 --     - addr 7,8 : TPOINT transmit buffer pointer
 --     - addr 9,10: Receive buffer pointer
 
-ld werk/lib/FONT
-ld werk/lib/I2ISR	-- i2c interrupt service routine
+ld work/lib/FONT
+ld work/lib/I2ISR	-- i2c interrupt service routine
 
 $3c constant SSD  -- slave address
 
