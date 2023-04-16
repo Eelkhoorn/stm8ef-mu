@@ -4,7 +4,7 @@
 # pointing to stm8ef/out/BOARD/forth.rst
 
 # The link below must point to your muforth/mu/target/STM8/words.mu4
-symlink=/home/pi/build/muforth/mu/target/STM8/words.mu4
+symlink=/home/$USER/muforth/mu/target/STM8/words.mu4
 
 file=$(readlink -f forth.rst)
 dir=${file%forth.rst}
