@@ -1,9 +1,0 @@
-.ifndef (2SWAP)
-
-: (2SWAP) ;
-
-__meta
-
-: 2SWAP  ( d1 d2 -- d2 d1 ) ROT >R ROT R> ;
-
-.then

@@ -1,9 +1,0 @@
-.ifndef (>)
-
-: (>) ;
-
-__meta
-
-: >  ( n1 n2 -- flag ) SWAP < ;
-
-.then
