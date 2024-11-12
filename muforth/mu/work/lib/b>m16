@@ -1,0 +1,33 @@
+-- convert bit# to word mask
+
+loading b>m16
+
+.ifndef (b>m16)
+-d (b>m16)
+
+hex
+__meta
+
+: b>m16
+-- LDW Y,X  LDW X,#1 LD A,(1,Y)  never  if  begin SLLW X  DEC A swap  then 
+--  0=  until EXGW X,Y  LDW (X),Y ] ;
+  [ 9093 , ae c, 1 , 90e6 , 01 c, 
+   never  if  begin  584a , swap  then  0=  until 
+  51ff , ] ;
+
+comment ===
+Addr     Opcode         Instruction                              Cycles
+-------  ------------   ----------------------------------       ------
+0x0000:  90 93          ldw Y, X                                 1
+0x0002:  ae 00 01       ldw X, #$1                               2
+0x0005:  90 e6 01       ld A, ($01,Y)                            1
+0x0008:  20 02          jra $c  (offset=2)                       2
+0x000a:  58             sllw X                                   2
+0x000b:  4a             dec A                                    1
+0x000c:  26 fc          jrne $a  (offset=-4)                     1-2
+0x000e:  51             exgw X, Y                                1
+0x000f:  ff             ldw (X),Y                                2
+0x0010:  81             ret                                      4
+===
+
+.then

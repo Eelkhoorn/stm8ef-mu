@@ -1,0 +1,11 @@
+-muwx
+-i out/STM8L151K4/STM8L151K4.ihx
+-b HOME = 0x8000
+-b DATA = 0x0001
+-k /usr/bin/../share/sdcc/lib/stm8
+-k /usr/share/sdcc/lib/stm8
+-l stm8
+out/STM8L151K4/STM8L151K4.rel
+out/STM8L151K4/forth.rel
+
+-e

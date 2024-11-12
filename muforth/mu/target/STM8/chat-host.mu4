@@ -1,0 +1,185 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading STM8/chat-host.mu4 : serial chat protocol (host)
+
+hex
+
+( Taking inspiration from the wildly successful S08 serial chat protocol.
+
+  Responds to the following commands. NOTE: these are hex values!
+
+00 - 0f  idle   - these command bytes are ignored
+
+10  set addr    - set the memory address pointer
+11  read-bytes  - read N words, incrementing by 2 as we go
+12  write-byte  - write a word to memory, incr pointer by 2
+13  get-sp      - get sp
+14  set-sp      - used in stack> to prevent overwriting the stack
+15  run         - set sp and pc and execute
+16  flash       - set target address and count, wait for response
+
+
+19 - ff  idle   - these command bytes are ignored
+)
+
+( To make spying on the protocol easier to deal with, break up the printed
+  bytes into "packets" in a semantically meaningful way. How about this
+  stupid name, which is easy to remember:)
+
+
+
+: c.idle                      ?spkt   0 >w  ;
+
+( Send two no-ops, let them transmit, _then_ throw away any input bytes.)
+: c.resync   c.idle  drain  flush ;
+
+: c.set-addr      ( a)          ?spkt  10 >b  >w             ;
+: c.read-bytes    ( n)          ?spkt  11 >b  >w             ;  ( then read streamed bytes)
+: c.write-byte    ( n)          ?spkt  12 >b  >b             ;
+: c.get-sp        ( - sp)       ?spkt  13 >b  w>             ;
+: c.set-sp        ( sp - sp)    ?spkt  14 >b  >w             ;
+: c.run           ( sp pc)      ?spkt  15 >b  swap >w >w     ;
+: c.flash         ( a u -- ab)  ?spkt  16 >b  swap >w >w  b> ;
+: c.return                      ?spkt  17 >b                 ;
+
+: c.hello  ( - chunk-size)
+   baudrate @ bps  c.resync
+   /page ;
+
+: c.setup-chunk  ( buf a u - #bytes)
+   swap c.set-addr  swap m !  ( #bytes) ;
+
+: c.read    ( buf a u)
+   c.setup-chunk  dup c.read-bytes  for  b> m&  next ;
+
+: c.write ( buf a u)
+    c.setup-chunk  dup c.write-byte for  m* >b next  ;
+
+: c.flash-begin  \t ULOCKF  remote  ;
+: c.flash-end    \t LOCKF   remote  ;
+: c.eeprom-begin \t ULOCK   remote  ;
+: c.eeprom-end   \t  LOCK   remote  ;
+: c.erase    ( a)  ( \t WIPE remote) ;
+: c.program  ( buf a u) 
+   push ( u)
+   swap @flashbuf r@ ( a buf flashbuf u)  c.write  ( copy chunk to target ram)
+   pop  ( a u) c.flash  drop ;
+
+: nop ;
+
+meta
+
+: .." ( a --) 
+   spy preserve spy off
+   dup image-c@ >r pad swap 1 + r@ t.read pad r> type ;
+
+: ." ( a --)
+   spy preserve spy off
+   now nop is .regs
+   dup \t C@ remote >r  pad swap 1 + r@ t.read pad r>  type ( \t 2DROP remote) 2drop
+   now .SP is .regs ;
+
+: string,  ( a u)
+   \m here image+ swap  ( a image u)  dup \m allot  cmove ;
+
+: $" ( -- a)
+   \m here \f "  dup \m c, \m string,
+;
+
+-- compile working dir in target
+: pwd, ( --a) \m here pwd dup \m c, \m string, ;
+-- compile command line in target,
+: cmd, ( --a) \m here command-line dup \m c, swap swap \m string, ;
+
+forth
+
+: fi flash-image ;
+
+-- flash region
+: flr  ( a len) c.flash-begin flash-region c.flash-end ;
+: 'flr ( a) h preserve flash \m here over - flr ;
+
+: epr  ( a len) c.eeprom-begin flash-region c.eeprom-end ;
+: 'epr ( a) h preserve eeprom \m here over - epr ;
+: fle ( --) h preserve eeprom @eeprom \m here over - epr ;
+
+-- flash cell, 2 bytes
+: flc ( a) 2 flr ;
+: epc ( a) 2 epr ;
+
+-- write cell to flash image and to target
+: flash-h 2dup image-! ;
+: !flash  ( n a) flash-h flc ;
+: flash2-h 2dup image-! ;
+: !flash2  ( n a)  flash2-h  c.flash-begin  \t ! remote c.flash-end  ;
+
+: sr ( a u --)
+   save-region ;
+
+-- save flash image
+: si h preserve flash save-image ;
+
+-- save region from address to end
+: 'sr ( a --)
+   \m here over - save-region
+;
+
+: !eeprom ( n a) flash-h epc ;
+
+: __b __building ;
+
+: .HI ( a b --)
+--    spy preserve spy off
+   >r pad swap r@ c.read pad r>  
+;
+
+-- Compile sentence with line feeds at the stert and at the end
+: $"cr ( -- a)
+   \m here \f "  dup 2 + \m c, \m string, $a \m c, 
+;
+
+: .. ( a --)
+   dup pad swap 1 c.read pad c@   .HI type
+;
+
+: HHI      ( - | ."stm8ef-release)
+  cr   ?spkt  "10 >b  b>  w>  swap .HI cr cr
+;
+
+-- start of string
+: sos  ( -- a b)
+	flash-end dup pad swap 1 c.read pad c@ dup >r - r>
+;
+
+: cmdl,
+	h preserve
+	flash \m here
+	flash-end \m goto
+	command-line  dup  dup \m c, flash-end swap - dup \m goto  >r
+	\m string, \m goto 
+	r> flash-end over - 1+ flr 2drop
+;
+
+: HI
+	baudrate @ bps
+	sos cr .HI ." Command line compiled in target: " cr type cr
+;
+
+: HI2 ( flashend baudrate--)
+   bps dup pad swap 1 c.read pad c@ dup >r - r> .HI cr type cr ;
+
+-- stop background task on target
+: bgs    baudrate @ bps pad 2 0 fill pad \m BGADDR 2 c.write ;
+
+: chat   ( this defines the t._____ words from common/interact.mu4)
+   chat-via  c.hello  c.get-sp  c.run  c.set-sp ( c.dpush) c.read  c.write
+   c.flash-begin  c.flash-end  c.eeprom-begin c.eeprom-end 
+   c.erase  c.return   c.program   c.idle  c.resync
+;
+
+-- reload ram image
+: reset
+   @ram ram-copied ! copy-ram
+;

@@ -1,0 +1,40 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading  Definitions for STM8S103
+decimal
+
+#64 constant /page
+
+( IMPORTANT: these values are hardcoded in forth.asm)
+"340 constant @flashbuf
+
+
+$400  constant #ram
+$2000 constant #flash
+$4000 constant @eeprom
+#640  constant #eeprom
+
+1  Ki constant ram-end
+"a000 1- constant flash-end
+
+.ifdef W1209-FD
+ld work/W1209-FD/kernel.mu4
+#57600
+.else
+ld work/MINDEV/kernel.mu4
+#115200
+.then
+constant baud-rate
+
+
+( First, a few defining words, which we'll use to load the "equates".)
+: equ     ( offset)  current preserve  .equates. definitions  constant ;
+: vector  ( offset)  equ ;
+: reg     ( offset)  equ ;
+: |  \ -- ;  ( | ignores the bit-fields that follow each register name)
+: aka   .equates. chain' execute  equ ;  ( for making synonyms)
+
+
+ld target/STM8/STM8S103.efr

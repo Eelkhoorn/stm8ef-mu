@@ -1,0 +1,310 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading STM8/flash.mu4 : Flash programming
+
+hex
+
+( Simple but inefficient!)
+: @image  dp  cell+ @         ( origin) ;
+
+-- "4000_0000              4  make-image  bogus
+
+: target>image  ( target)  ( find an image based on target addr)
+   dup @ram           u< if  drop  flash ^  then
+     [ @ram #ram + #] u< if        ram   ^  then  bogus ;
+
+: program-chunk  ( 'target len)
+   cr ." program "  over u.  dup u.
+   over image+ -rot  ( buf 'target len)  t.program ;
+
+: erase-page  ( 'target)
+   cr ." erase   "  dup u.
+   t.erase ;
+
+: erase?  ( 'target - erase?)   [ /page 1- #] and  0= ;
+
+( Before we program the _first_ byte of a page, we erase the page.)
+: flash-chunk  ( 'target len - 'target+len)
+   2dup + push ( over erase? if  over erase-page  then ) program-chunk  pop  ;
+
+
+( Do the programming in chunks; the variable /chunk - which is set by the
+  interact code based on a value received from the debug interface - tells
+  us how big each chunk should be.)
+
+: flash-region  ( a len)
+   /chunk @  /mod  ( r q)  swap push  for  /chunk @  flash-chunk  next
+                                    pop  =if  ( rem) flash-chunk  drop ^  then  2drop ;
+
+( Check to see if we're going to clobber the bootloader and complain if
+  we're not executing from RAM.)
+
+( XXX Do nothing right now. We only need to do this when trying to program
+  the flash from chat code - which doesn't exist yet. ;-)
+
+: ?clobbering-loader  ( a u - a u)  ;
+
+( don't wipe uart words, make sure they are in the first flash page,
+ for writing to the vector table jtag is needed)
+: flash-image
+   h preserve  flash region ( a u)  
+   ?clobbering-loader t.flash-begin  flash-region  t.flash-end
+--   \t 2DROP remote
+   2drop
+;
+
+: eeprom-image
+   h preserve  eeprom region ( a u)  
+   ?clobbering-loader t.eeprom-begin  flash-region  t.eeprom-end
+--   \t 2DROP remote
+   2drop
+;
+
+
+( Verifying that host and target images are the same.)
+
+( Prepare to do a comparison or computation between data read from the
+  target into a buffer, and data in our memory image. Read a chunk from the
+  target into buf, and set m to point to the beginning of buf.
+
+  Be careful about setting m. Some chunked read implementations use it, so
+  set it *after* doing the read.)
+
+: setup-comparison  ( 'target len - 'target len)
+   2dup pad -rot t.read  ( 'target len)  pad m ! ;
+
+variable noisy-verify?  ( Whether to print differences.)
+
+( Little endian.)
+: mcell*   m* m*   hilo>  ;
+
+( Accumulate - by logically OR-ing - any differences.)
+: verify-word    ( diff a - diff' a)
+   dup image-@ mcell* xor  ( diff a xor)
+   =if  noisy-verify? @ if  over u. ( print address that differs)  then  then
+   rot or  swap ;
+
+: verify-chunk  ( diff 'target #chunk - diff' 'target+#chunk)
+   -- cr ." verify "  over u.  dup u.
+   2dup + push
+   ( diff 'target len)  setup-comparison
+   \m cell/ for  verify-word  \m cell+  next  drop
+   pop ;
+
+( Verify using the same chunk size that we used for flashing; the variable
+  /chunk - which is set by the interact code based on a value received from
+  the debug interface - tells us how big each chunk should be.)
+
+: verify-region  ( 'target len - diff')
+   0 -rot  ( diff)
+   /chunk @  /mod  ( r q)  swap push  for  /chunk @  verify-chunk  next
+                                    pop  =if  ( rem) verify-chunk  drop ^  then  2drop ;
+
+: ?empty-region  ( a u - a u)  =if ^ then
+   cr ." WARNING: The flash region is empty. verify will always report no change." ;
+
+: verify
+   h preserve  flash region ( a len)  ?empty-region ;
+
+( Called when we connect to target to make sure host's and target's flash
+  regions are the same.)
+
+-: ( verify-quietly)  ( - 0 if same, non-zero if different)
+   h preserve  flash region  (  len)  
+   noisy-verify? off  verify-region ;  is verify-quietly
+
+
+( Read an image from the target into the host image.)
+: read-chunk  ( a u - a+u)
+   -- cr ." read-chunk "  over u.  dup u.
+   2dup + push
+   over image+ -rot  t.read
+   pop ;
+
+: read-region  ( a u)
+   /chunk @  /mod  ( r q)  swap push  for  /chunk @  read-chunk  next
+                                    pop  =if  ( rem) read-chunk  drop ^  then  2drop ;
+
+( If last 16 bytes contain "muforth@" followed by a starting target
+  address, use that address rather than @flash.)
+
+: image-origin  ( a u - a u start)
+   2dup +  cell- cell-  @+ @ swap
+   [ token muforth@ drop @ #] = if
+      ( valid signature) [ -2 cells #] u+ ^ then
+   drop  @flash ( default to @flash) ;
+
+( Read image from target. Leaves user in ram or flash depending on target
+  address.)
+
+: read-image  ( target len)
+   2dup read-region  over target>image  over +  ( start end)  region! ;
+
+( Load image from a file. Leaves user in ram or flash depending on image
+  start address. If image does not contain a start address, leaves user in
+  flash.)
+
+comment ===
+: load-image
+   token, open-file-ro  ( fd)  dup read-file  ( a u)  rot close-file
+   image-origin  dup target>image
+   2dup swap over +  ( start end)  region!
+   ( a u start) image+ swap  cmove ;
+===
+: loadim ( start-addr z" filename)
+   open-file-ro  ( fd)  dup read-file  ( a u)  rot close-file
+   rot 2dup + >r
+   ( a u start) image+ swap  cmove  r> \m goto ;
+
+: load-image ( start-addr)
+   token, loadim ;
+
+( Save image to a file. Saves the current region. To make sure you are
+  saving the flash region, do "flash save-image <name>".)
+
+: save-image
+   h preserve flash
+   token, create-file  ( fd)  push
+   r@  ( region) $8000 \m here over -  swap image+ swap  write
+   ( r@ " muforth@" write ) r@ dp cell+ ( 'origin) cell write ( start)
+   pop close-file ;
+
+\m ' IRET 4 + constant kernel-end
+$8000 kernel-end over - 2constant kernel-region
+
+: save-kernel
+   kernel-region read-image
+   token, create-file  ( fd)  push
+   r@  kernel-region  swap image+ swap  write
+   ( r@ " muforth@" write ) r@ dp cell+ ( 'origin) cell write ( start)
+   pop close-file ;
+
+: saveregion
+   create-file  ( fd)  push
+   r@  -rot  swap image+ swap  write
+   ( r@ " muforth@" write ) r@ dp cell+ ( 'origin) cell write ( start)
+   pop close-file ;
+
+: save-region ( addr length)
+   token, saveregion ;
+
+-- ===============================================================
+-- disassembling words
+-- we let naken_util do the disaasembling
+-- we create some files in /tmp that are input for mu/tools/disassembling
+--  the output of naken is edited to reflect the actual addresses
+-- ===============================================================
+
+hex
+-1 .if 
+variable file-descriptor
+
+200 buffer PAD -- we cannot use "pad" since it is already used by (.)
+-- variables and array t 
+variable wh variable wl
+200 buffer arr
+
+-- export the (xt - name) list to a file
+: export_word_list ( addr | file-name)
+    m preserve
+    create-file file-descriptor !
+    begin PAD m ! @
+    dup       0= if drop file-descriptor @ close-file ^ then
+    dup muchain? if drop file-descriptor @ close-file ^ then
+    dup hidden?  if drop file-descriptor @ close-file ^ then 
+    dup  dup >ip execute char $ m& (.) m-cmove bl m& bl m&
+    link>name m-cmove #LF m& 
+    file-descriptor @ PAD m @ over - write 
+    again ;
+
+: +nop ( u u)
+	m preserve PAD m !
+	char $ m&
+   (.)  m-cmove
+	20 m&
+	(.)  m-cmove
+	#LF m&
+	file-descriptor @  PAD m @ over - write ;
+	
+	
+-- mask address bytes after call to instr-addr with nop nop
+: nop> ( addr len instr-addr ) 
+	z" /tmp/nop.txt" create-file file-descriptor ! 
+	>hilo wl ! wh ! arr m ! 
+	swap image+ dup rot + swap do
+		i c@ wh @ = if
+			i 1+ c@ wl @ = if  
+				i 2 + dup image- dup
+				>lohi m& m& swap
+				dup c@  dup m& swap
+				dup 1+ c@ dup m& swap
+				image- 9d9d swap image-!
+				hilo> swap +nop
+				pop 4 + push
+		then then
+	loop file-descriptor @ close-file 
+;
+
+-- restore masked bytes
+: >nop 
+	arr m !
+	begin
+		m* m* hilo>
+		m* m* hilo>
+		over image-!
+		0= until
+;
+
+-- Strings to call shell commands
+$" tools/disassemble 0000" dis_cmd
+$" /usr/bin/dd count=0000 if=/tmp/region.bin of=/tmp/cut.bin bs=1 2>/dev/null" dd_cmd
+
+: reset_dis_cmd 
+   " tools/disassemble 0000" dis_cmd swap cmove ;
+: reset_dd_cmd   ( we use dd to trim the saved region)
+   " /usr/bin/dd count=0000 if=/tmp/region.bin of=/tmp/cut.bin bs=1 2>/dev/null" dd_cmd swap cmove ;
+
+-- export word addresses
+: export_words
+        .target. z" /tmp/target" export_word_list
+        .target-runtime. z" /tmp/target-runtime" export_word_list ;
+
+-- system is defined in muforth/src/file.c
+: dis ( addr n) 
+        2dup \m (?branch) @ nop>
+        radix preserve hex
+        export_words
+        sep preserve -sep
+        2dup
+        z" /tmp/region.bin" saveregion
+        decimal 
+        reset_dd_cmd (.) 4 over - dd_cmd #18 + + swap cmove dd_cmd system
+        hex
+        z" /usr/local/bin/naken_util -disasm -STM8 /tmp/cut.bin  > /tmp/out.txt" system 
+        reset_dis_cmd (.) 4 over - dis_cmd #18 + + swap cmove dis_cmd system 
+        >nop ;
+
+-- ===============================================================
+-- assembling using naken_asm: just use the normal assembler syntax
+-- ===============================================================
+
+naken
+: " 
+   file-descriptor @ dup PAD m @ over - write close-file 
+   z" tools/assemble" system 
+   \m here z" /tmp/as.bin" loadim \m ] ;
+: [ \tc [ ; 
+
+target-compiler
+: n" 
+	depth depth0 !
+	export_words
+   z" /tmp/assembly" create-file  file-descriptor ! 
+   PAD m ! " .stm8 " m-cmove
+	__naken ;
+
+forth
+.then
+

@@ -1,0 +1,16 @@
+loading work/lib/UD<
+.ifndef (UD<)
+
+-d (UD<)
+
+__meta
+: UD<
+	ROT 2DUP = if
+		2DROP U<
+	else
+		SWAP U<
+		NIP NIP
+	then
+;
+
+.then

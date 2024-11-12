@@ -1,0 +1,519 @@
+loading 8051/n76e003/kernel.mu4
+hex
+flash
+__meta
+
+ld target/8051/chat.mu4
+
+: inc2 a[ r3 inc   0 # r3 = if r2 inc then ] ;
+: dec2 a[ r3 dec "ff # r3 = if r2 dec then ] ;
+: inc4 a[ r5 inc   0 # r5 = if r4 inc then ] ;
+: dec4 a[ r5 dec "ff # r5 = if r4 dec then ] ;
+
+label (drop)
+: DROP  a[  ( n -- )   
+   @r0 DPH mov
+   r0 inc
+   @r0 DPL mov
+   r0 inc
+    ] ;
+label (exec)
+: EXEC a[ DPL push DPH push ] DROP ;
+: BG_EXEC a[ 7 push 6 push ] ;
+label (dup)
+: DUP  a[  ( n -- n \ n )   
+   r0 dec DPL @r0 mov
+   r0 dec DPH @r0 mov
+   ] ;
+
+(dup) (DUP)                   \f !
+(drop) (DROP)                 \f !
+
+-- "E41A constant T0-RELOAD   ( 5ms @ 16.6 MHZ)
+"E5D9 constant T0-RELOAD   ( 5ms @ 16 MHz)
+
+label tim0-int                ( backgroud ticker, increments TICKCNT, executes @BG)      
+   IE .7 clr
+   PSW "18 mclr               ( switch to reg bank 0)
+   ' inc2 call
+   ' BG_EXEC call
+   TCON .4 clr T0-RELOAD >hilo # TL0 mov # TH0 mov TCON .4 setb
+   "18 # PSW orl
+   09 # r7 mov   ( byte for do-command)
+   IE .7 setb
+   reti ;c
+
+here
+__asm INT_TIM0 goto tim0-int j ;c
+goto
+
+-- empty backgound task
+: BG0 a[  r6 rclr return r7 mov ret ;c 
+
+: T0-START 
+   a[ 
+   1 # TMOD mov
+   TCON .4 setb
+   IE .1 setb ret ;c
+
+: T0-STOP a[ IE .1 clr TCON .4 clr ] ;
+
+: TIM DUP a[ r3 DPL mov r2 DPH mov ] ;
+     
+label (swap)
+: SWAP  a[  ( n1 \ n2 -- n2 \ n1 )   
+   DPH a xch
+   @r0 a xch
+   DPH a xch
+   r0 inc
+   DPL a xch
+   @r0 a xch
+   DPL a xch
+   r0 dec
+   ] ;
+: OVER  a[  ( n1 \ n2 -- n1 \ n2 \ n1 )   
+   0 r1 mov ]
+   DUP a[
+   @r1 DPH mov
+   r1 inc
+   @r1 DPL mov
+    ] ;
+: 2DUP OVER OVER ;
+label (2drop)
+: 2DROP  a[  ( n n -- )
+   r0 inc r0 inc  ]
+   DROP ;
+: NIP  a[  ( n1 \ n2 -- n2 )   
+    r0 inc
+    r0 inc
+    ] ;
+   
+-- 	 (==== Memory primitives ====
+
+-- ==XRAM==
+label (@)
+: @   a[  ( a -- n ) 
+   @dptr a movx
+   a r1 mov
+   dptr inc
+   @dptr a movx
+   a DPL mov
+   r1 DPH mov
+   ] ;
+: !   a[  ( n \ a -- ) 
+   @r0 a mov
+   a @dptr movx
+   r0 inc
+   dptr inc
+   @r0 a mov
+   a @dptr movx
+   r0 inc ]
+   DROP
+;
+: C@  a[  ( a -- c ) 
+   @dptr a movx
+   a DPL mov
+   0 # DPH mov ]
+;
+: C!  a[  ( c \ a -- ) 
+   r0 inc
+   @r0 a mov
+   a @dptr movx
+   r0 inc ]
+   DROP
+;
+--  ==RAM== 0 - 7f
+-- store #data16 @ IRAM address 
+: !I  ( u a --)
+   SWAP a[ r0 inc  @r0 1 mov DPH @r1 mov
+           r1 inc  DPL @r1 mov r0 inc ] DROP ;
+: @I ( a -- u)
+   a[ DPL r1 mov @r1 DPH mov r1 inc @r1 DPL mov ret ;c
+-- store byte @ IRAM address
+: C!I ( b a --)
+   SWAP a[ r0 inc @r0 1 mov DPL @r1 mov r0 inc ] DROP ;
+: C@I a[ DPL r1 mov @r1 DPL mov DPH rclr ] ;
+
+--  ==FLASH==
+label (@F)
+: @F ( a -- n)
+   a[  a clr @a+dptr a movc a r1 mov 1 # a mov @a+dptr a movc r1 DPH mov a DPL mov ret ;c
+: C@F ( a -- b)
+   a[ a clr @a+dptr a movc a DPL mov 0 # DPH mov ret ;c
+
+-- 	 (==== Arithmetic operators ====
+
+: +   a[  ( n1 \ n2 -- n1-n2 )   
+   @r0 B mov
+   r0 inc
+   @r0 a mov
+   r0 inc
+   DPL a add
+   a DPL mov
+   B a mov
+   DPH a addc
+   a DPH mov ]
+;
+: -   a[  ( n1 \ n2 -- n1-n2 )   
+   @r0 B mov
+   r0 inc
+   @r0 a mov
+   r0 inc
+   c clr
+   DPL a subb
+   a DPL mov
+   B a mov
+   DPH a subb
+   a DPH mov
+   ] ;
+
+: /MOD a[
+2 push 3 push 4 push 5 push
+0 # r3 mov
+0 # r2 mov
+11 # r1 mov
+c clr
+never if
+begin \f swap
+3 r5 mov
+2 r4 mov
+c clr
+r2 a mov
+DPL a subb
+a r2 mov
+r3 a mov
+DPH a subb
+a r3 mov
+u< if
+5 r3 mov
+4 r2 mov
+then
+c cpl
+then
+
+r0 inc
+@r0 a mov 
+a rlc 
+a @r0 mov 
+r0 dec 
+@r0 a mov 
+a rlc
+a @r0 mov 
+c 20 .0 mov 
+
+r1 decz? if
+never if \f swap
+then
+20 .0 c mov
+r2 a mov
+a rlc
+a r2 mov 
+r3 a mov 
+a rlc
+a r3 mov
+never \f swap until then
+@r0 DPH mov 
+r0 inc
+@r0 DPL mov
+2 @r0 mov 
+r0 dec
+3 @r0 mov
+5 pop 4 pop 3 pop 2 pop
+ret 
+;c
+
+: /  ( n \ m -- quot )  /MOD  NIP ;
+: MOD  ( n \ m -- rem )  /MOD  DROP ;
+
+: NOT  a[  ( n1 -- _n2 )   
+   FF # a mov
+   a DPH xrl
+   a DPL xrl ]
+;
+: AND  a[  ( n1 \ n2 -- n1.and.n2 )   
+   @r0 a mov
+   r0 inc
+   a DPH anl
+   @r0 a mov
+   r0 inc
+   a DPL anl ]
+;
+: OR  a[  ( n1 \ n2 -- n1.or.n2 )  
+   @r0 a mov
+   r0 inc
+   a DPH orl
+   @r0 a mov
+   r0 inc
+   a DPL orl ]
+;
+: XOR  a[  ( n1 \ n2 -- n1.xor.n2 )  
+   @r0 a mov
+   r0 inc
+   a DPH xrl
+   @r0 a mov
+   r0 inc
+   a DPL xrl ]
+;
+: 2+ a[ dptr inc dptr inc ret ;c
+: 2*  a[  ( n -- 2n* )   
+   c clr
+   DPL a mov
+   a rlc
+   a DPL mov
+   DPH a mov
+   a rlc
+   a DPH mov ]
+;
+: 2/  a[  ( n -- n2/ )   
+   DPH a mov
+   ACC .7 c mov
+   a rrc
+   a DPH mov
+   DPL a mov
+   a rrc
+   a DPL mov ]
+;
+: U2/  a[  ( u -- u2/ )   
+   DPH a mov
+   c clr
+   a rrc
+   a DPH mov
+   DPL a mov
+   a rrc
+   a DPL mov ]
+;
+: NEGATE  a[  ( n -- _n )   
+   c clr
+   a clr
+   DPL a subb
+   a DPL mov
+   a clr
+   DPH a subb
+   a DPH mov ]
+;
+label (1/1)
+: 1   ( -- 1)
+   DUP a[
+   1 # dptr mov
+   ret
+;c
+: -1
+   DUP a[
+   "ffff # dptr mov
+   ret
+;c
+: 1+
+   a[ dptr inc ret
+;c
+: 0 
+   DUP a[ 0 # dptr mov ret
+;c
+: 1-
+   -1 +
+;
+: 0<  a[  ( n -- flag )   
+   DPH a mov
+   ACC .7 bclr? if
+     0 # dptr mov
+     ret
+   then
+   FFFF # dptr mov ]
+;
+
+: U*  ( n \ m -- nm* )   a[
+   DPH a mov
+	r0 inc
+	@r0 B mov
+	ab mul
+	a DPH mov
+	DPL a mov
+	r0 dec
+	@r0 B mov
+	ab mul
+	DPH a add
+	a DPH mov
+	DPL a mov
+	r0 inc
+	@r0 B mov
+	ab mul
+	a DPL mov
+	B a mov
+	DPH a add
+	a DPH mov
+	r0 inc
+] ;
+
+label ?branch
+   DPH a mov
+   0= if
+   DPL a mov
+   0= if
+   ] DROP a[
+   ret then then  ( fall through)
+label skip_3
+   DPH pop DPL pop
+   dptr inc dptr inc dptr inc
+   DPL push DPH push
+   ret 
+;c 
+
+comment ===
+label (do)
+   DPH r4 mov DPL r5 mov ] DROP a[ DPH 8 mov DPL 9 mov ] DROP ;
+
+-- : 4_8=   a[ 8 a mov 4 a = if 9 a mov 5 a = if "ff # a mov ret then then a clr ] ;
+: +45  a[
+   r5 a mov DPL a add a 5 mov r4 a mov DPH a addc a 4 mov ] DROP ;
+
+label (loop)
+   r5 inc 0 # r5 = if r4 inc then
+label 45=89? 
+   8 a mov 4 a = if 9 a mov 5 a = if "ff # a mov ret then then a clr ret ;c
+
+label (+loop)
+   r5 a mov DPL a add a 5 mov r4 a mov DPH a addc a 4 mov ] DROP a[ 45=89? j ;c
+
+: I DUP a[ r4 DPH mov r5 DPL mov ] ;
+ ===
+
+label (for1)
+   ACC pop B pop 4 push  B push ACC push
+   DPL r4 mov ] DROP ;
+
+label (do1)  ( r4: index; r5: limit)
+   ACC pop B pop 4 push  B push ACC push
+   DPL r4 mov r0 inc @r0 5 mov r0 inc ] DROP ;
+
+label (loop1)
+   r4 inc r5 a mov c clr r4 a subb ret ;c
+label (+loop1)
+   DPL a mov (drop) call r4 a add a r4 mov r5 a mov c clr r4 a subb ret ;c
+label (I1)
+: I1 
+   DUP a[ 0 # DPH mov r4 DPL mov ret ;c
+
+loading   implement foreward refs,  
+
+(2drop) (2DROP)               \f !
+(swap) (SWAP)                 \f !
+\m ?branch (?branch)          \f !
+(1/1)  (1)                    \f !
+-- dovarptr (dovarptr)           \f !
+
+: = - if 0 else -1 then ;
+: <  ( n \ m -- flag )  2DUP XOR 0< if DROP 0< ^ then - 0< ;
+: >  ( n \ m -- flag )  2DUP XOR 0< if  NIP 0< ^ then  SWAP - 0< ;
+: ROT ( a b c -- b c a)
+   >R SWAP R> SWAP ;
+: ABS  ( n -- n )  DUP 0< if NEGATE then ;
+: MAX  ( n \ m -- p )  2DUP < if NIP ^ then DROP ;
+: MIN  ( n \ m -- p )  2DUP > if NIP ^ then  DROP ;
+
+-- : 0=  ( n -- flag )       if 0 ^ then -1 ;
+: 0=  ( n -- flag )
+   a[ DPH a mov 0= if DPL a mov 0= if 
+     "ffff # dptr mov ret
+   then then
+   0 # dptr mov ret ;c
+
+label (do)
+   ] SWAP  R>  SWAP >R  SWAP >R  >R ;
+
+label (loop) ( -- )
+   ] R> ( return-addr) R> ( index) 1+ DUP R@ < if
+      >R  @F
+   else
+      R> 2DROP  2+
+   then  >R ;
+
+label (+loop) ( step --)
+   ] R> SWAP ( return-addr step) DUP R> + ( ra s s+i) DUP R@ <  if ( ra s s+i)
+      >R  DROP @F
+   else
+      R> 2DROP  DROP 2+
+   then >R ;
+
+label (next)
+      ] R> R> DUP  if 1 - >R @F  else DROP 2+  then  >R  ;
+
+(do) (DO)                     \f !
+(do1) (DO1)                   \f !
+(for1) (FOR1)                 \f !
+(+loop1) (+LOOP1)             \f !
+(loop1) (LOOP1)               \f !
+(loop) (LOOP)                 \f !
+(+loop) (+LOOP)               \f !
+(next) (NEXT)                 \f !
+
+comment ===
+
+: 45_0=
+   DUP a[ 0 # r4 = if 0 # r5 = if "ffff # dptr mov ret then then 0 # dptr mov ret ;c 
+
+label (next)
+   r5 dec "ff # r5 = if r4 dec then 
+   0 # r4 = if 0 # r5 = if a clr  ret then then "ff # a mov ret ;c
+
+(next) (donext)             \f !
+===
+
+: U<  ( n \ m -- flag )  a[
+   @r0 a mov
+   r0 inc
+   DPH a = if
+   @r0 a mov
+   DPL a = if
+   then then
+   r0 inc
+   u>= if
+   0 # dptr mov
+   ret
+   then
+   ffff # dptr mov
+   ret ;c
+   
+: U>  ( n \ m -- flag )  SWAP  U<  ;
+: +! DUP>R @ + R> ! ;
+: CF@+ ( a -- c\ a+ )  DUP C@F SWAP 1+ ;
+: C!+ ( c \ a -- a+ )  SWAP OVER C! 1+ ;
+-- Move from flash to xram
+: COUNT  ( addr -- addr+ \ count )  CF@+ SWAP ;
+: CMOVE  ( src \ dest \ count -- )  for >R COUNT R> C!+ next 2DROP ;
+
+
+: 1sec a[ "c8 # r3 = if 4 # P1 xrl 0 # r3 mov then ] ;
+: init a[ 0 # r2 mov 0 # r3 mov ' 1sec >hilo # r7 mov # r6 mov ] T0-START ;
+
+-- 1 serial-timeout
+
+comment ===
+
+label c!f
+    0 r0 bank3 mov
+    r0 inc
+    @r0 IAPFD mov
+    DPH IAPAH mov
+    DPL IAPAL mov
+    ta 1 # IAPTRG orl
+    ret
+;c
+: C!F  ( n a -- n a) a[ 
+   c!f call ]
+   2DROP 
+;
+: !F  ( n a --) a[
+    0 dec
+    c!f call
+    dptr inc
+    0 inc 
+    c!f call ]
+    2DROP
+;
+
+-- exchange dptr with register pair
+: x67 a[ DPH a mov r6 a xch a DPH mov DPL a mov r7 a xch a DPL mov ret ;c
+: x45 a[ DPH a mov r4 a xch a DPH mov DPL a mov r5 a xch a DPL mov ret ;c
+: x23 a[ DPH a mov r2 a xch a DPH mov DPL a mov r3 a xch a DPL mov ret ;c
+
+===
+

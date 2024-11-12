@@ -1,0 +1,235 @@
+loading work/STM8L051F3/flashlight/flash-mu
+
+-- last edit: august 1, 2024
+-- Flashlight: five flashes and pause of 10 seconds, during night time
+-- using built in RTC with LSE crystal and interrupts: auto wake up and alarm.
+-- flashing starts at power up and stops 10 hours later.
+-- LED on PC4
+
+ld target/STM8/STM8L051F3.mu4
+ld aliases
+
+cr cr ." To set the RTC to the time of the host:"
+cr    ."   chat set-clock." cr
+." To change the start time: mmhh TT!" cr
+." To change the stop time:  mmhh TP!"
+
+
+4 constant PIN
+5 constant #fl
+#5000  constant flash-on	-- * 10 µs
+#5000 constant flash-off	-- * 10 µs
+#10000  constant flash-interval	-- ms
+
+flash
+__meta
+
+EVAR TT			-- start time
+EVAR TP			-- stop time
+here constant BT 	-- time at boot
+$5959 , $2000 , $2208 , $21 c,  -- 20:59, 22 aug'21
+-- BT 7 0 fill	-- reset time regs, all 0
+ram
+here constant ACT  	-- time
+$5559 , $1100 , $2208 , $21 c,
+flash
+
+__host
+meta
+-- set time array a to actual time
+: star 
+	datum> tijd>
+	dp preserve  \m ACT dup \m goto
+	SS 7 for dup @ \m c, $28 + next drop
+	7 copy-region
+;
+
+__meta
+
+: *10us  ( n -- )  --  delay n * 10us
+   1- for [
+      $A62B ,    --      LD    A,#42
+      $4A  c,    -- 1$:  DEC   A
+      $26FD ,    --      JRNE  1$
+   ] next
+;
+
+: fl ( -- ) [ 1 PC_ODR PIN ]B! flash-on *10us [ 0 PC_ODR PIN ]B! ;
+
+: fls ( -- ) [ #fl 1- ] literal for1 fl  flash-off *10us next1 ;
+
+-- Unlock RTC control registers
+: rtcu ( --)
+  [ $ca RTC_WPR ]litC!
+  [ $53 RTC_WPR ]litC!
+;
+
+-- Lock RTC control registers
+: rtcl ( --)
+  [ $FF RTC_WPR ]litC!
+;
+
+
+-- Set calender registers to time at a
+: sC ( a -- )
+	[ 1 RTC_ISR1 7 ]B!		-- $514C
+	[M RTC_ISR1 6 ]BSU
+	RTC_TR1 7 CMOVE
+	[ 0 RTC_ISR1 7 ]B!
+;
+
+comment ===
+
+: time
+  RTC_TR1 7 0 do 
+    DUP C@ SWAP 1+ loop DROP CR
+  ROT ."  / " SWAP  ."  / '" 
+  CR DROP
+  h. ."  : " h. ."  : " h.
+;
+
+===
+
+-- set wake up timer to n milliseconds, 1<n<32000
+: swu ( n -- )
+	[ 0 RTC_CR2 2 ]B!
+	[M RTC_ISR1 2 ]BSU			-- poll INITF
+	$800 #1000 */ RTC_WUTRH !	-- $5154
+;
+
+-- start auto wake up
+: stw ( n -- )
+	swu
+ [ $44 RTC_CR2 ]litC!
+;
+
+-- save start and stop alrm timings, format: $mmhh
+: ss! ( start stop -- )
+	ULOCK
+	[ TP ]! [ TT ]!
+	LOCK
+;
+
+-- set alarm to time in variable @ a
+: sa ( a -- )
+	[ 0 RTC_CR2 0 ]B!
+	[M RTC_ISR1 0 ]BSU		-- poll INITF
+	F@ [ RTC_ALRMAR2 ]!			-- $515D
+	[ 1 RTC_ALRMAR1 7 ]B!		-- don't care about seconds
+	[ 1 RTC_ALRMAR4 7 ]B!		-- don't care about date
+	[ 1 RTC_CR2 0 ]B!
+;
+
+-- start alarm
+: sta ( a -- )
+	sa
+	[ $55 RTC_CR2 ]litC!	-- enable alarm interrupts, enable alarm timer
+;
+
+: stop
+	rtcu
+	[ 0 RTC_CR2 2 ]B!	-- $5149
+	rtcl
+;
+
+: sup  ( -- )				-- setup PC-PIN
+	[ 1 PC_DDR PIN ]B!		-- PC-PIN LED output
+	[ 1 PC_CR1 PIN ]B!		-- set up as push pull
+;
+
+: RTC_int
+	SAVEC
+	[ RTC_ISR2 2 ]B? if
+		fls
+	[ 0 RTC_ISR2 2 ]B!
+	then
+	[ RTC_ISR2 0 ]B? if
+		[ RTC_TR2 ]@ [ TP ]@  = if		-- $5142, hours register
+			 0 TT
+		else
+			1 TP
+		then
+		rtcu sta RTC_CR2 2 B! rtcl  -- $5149
+		[ 0 RTC_ISR2 0 ]B!
+	then
+	IRET
+; -- ' RTC_int INT_RTC !flash	-- $801A
+
+-- initialise RTC
+: rtci ( --)
+  [ 1 CLK_PCKENR2 2 ]B!		-- rtc periferal clock gating
+  [ $10 CLK_CRTCR ]litC!			-- LSE
+  rtcu
+  [ 1 RTC_ISR1 7 ]B!			-- Initialization mode.
+  [M RTC_ISR1 6 ]BSU			-- poll INITF
+  [ $7F RTC_APRER ]litC!			-- set PREDIV_A to 127
+  [ 0 RTC_SPRERH ]litC!			-- set PREDIV_S to 255
+  [ $FF RTC_SPRERL ]litC!
+--  [ RTC_CR1 #1011 ]litC!			-- 
+--   [ 1 RTC_CALRH 7 ]B!			-- set CALP, calibration of calender clock
+--   [ #113 RTC_CALRL ]litC!			-- set CALM, lse appears to be 32756 Hz
+  [ 0 RTC_ISR1 7 ]B!
+;
+
+
+: init
+	rtci sup
+	rtcu
+	flash-interval swu		-- 10 sec flash interval
+	BT sC				-- Reset clock
+ 	$21 $7 ss!			-- set alarms, start 21:00, stop 07:00
+-- 	0 $11 ss!			-- set alarms, start now, stop 11 hours later
+	TT sta rtcl			-- set alarm to start, lock RTC control regs
+	fl
+;
+
+-- update RTC 
+: act! ACT rtcu sC rtcl ;
+: TT! ( mmhh --)  ULOCK TT ! LOCK rtcu TT sa rtcl ;
+: TP! ( mmhh --)  ULOCK TP ! LOCK ;
+
+-- ' init 'BOOT !flash
+
+__host
+
+-- flash interrupt verctors
+: fl-int
+   \t RTC_int  \m INT_RTC !flash
+   \t init     \m 'BOOT   !flash
+;
+
+: set-clock  \m star \t act! remote ;
+forth
+
+comment ===
+Set clock: 
+
+init
+hex 21 8 19 21 15 30 sC		-- 21:15:30 at 19 august '21
+' HALT 'IDLE !				-- use HALT between interrupts to
+							--       reduce power consumption
+
+-- Set calender registers, BCD input
+: sC ( hh mm ss dd mm yy -- )
+	[ 1 RTC_ISR1 7 ]B!		-- $514C
+	[M RTC_ISR1 6 ]BSU
+	2 for I sD next
+	SWAP ROT
+	2 for I sT next
+	[ 0 RTC_ISR1 7 ]B!
+;
+
+: >BCD
+	BASE @ #10 = if
+		#10 /MOD #16 * +
+	then
+;
+
+-- SET RTC REG
+: SRR ( nIa -- )
+	+ SWAP >BCD SWAP C!
+;
+
+: sT ( nI-- ) RTC_TR1 SRR ;	-- set time
+: sD ( nI-- ) RTC_DR1 SRR ;	-- set date
+===

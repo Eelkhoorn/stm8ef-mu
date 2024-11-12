@@ -1,0 +1,598 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+loading Atmel SPI flash programming (STM32 core)
+
+( It might seem rather odd that this is here, but I'm interested in using
+| an STM32 Discovery board as a "programming pod" for Atmel 8051 and AVR
+| microcontrollers, which have a simple SPI interface for erasing,
+| programming, and reading the on-chip memories and configuration bytes.
+|
+| The AVR and AT89LP [Atmel's 8051 variant] have similar but not identical
+| command protocols. I'm thinking of leaving the details to the host, and
+| putting just the "plumbing" here.
+|
+| The idea is basically this:
+|
+| [1] the STM32 chip sits in a loop, reading a word of the RAM until a
+| magic number appears there. This is the "semaphore" signal from the host
+| that a command packet is available. When it sees the magic word, it goes
+| to step 2.
+|
+| [2] The STM32 turns around and talks to the target chip via SPI, sending
+| the command, address, and any data bytes to the target, and reading its
+| response. It buffers the response, and then writes a different magic number
+| to the semaphore word, signaling the host that it has completed the
+| command.
+|
+| Then it goes back to [1]. The host reads the buffered target response,
+| creates a new command packet, and sets the semaphore word.
+|
+| The communication between the STM32 and the host can be over ST-LINK,
+| which means that no USB-serial interface is necessary. The STM32 Discovery
+| board can power the target as well.
+|
+| There is no need to flash this code into the STM32. It can easily run
+| from RAM.)
+
+__meta
+decimal
+
+ram
+
+here @ram = .not .if
+   error" Something is wrong: data structures not starting at @ram."
+.then
+
+( We want to put the data structures that the host will use to communicate
+| with the STM32 at the beginning of RAM so we know where to find them.
+| Remember: when *using* this code, the host will have loaded AVR or 8051
+| code into the memory spaces. It will have no idea about how the memory of
+| the STM32 is laid out, so we set up a simple, constant layout - data first,
+| then the program.)
+
+( Let's put the big stuff first. Makes it easy to find when debugging.)
+here equ data         256 allot  ( memory read/write buffer)
+here equ semaphore   cell allot  ( semaphore + stm32 command)
+
+( This command block is pretty specific to AVR/AT89LP SPI programming.)
+here equ cmd         1 allot  ( flash command)
+here equ addr                 ( flash addr)
+here equ addr-hi     1 allot
+here equ addr-lo     1 allot
+here equ result      1 allot  ( single byte result)
+
+here equ count       2 allot  ( byte count to transfer)
+
+here equ toggle      1 allot  ( flash command toggle - for AVR)
+                     1 allot  ( padding to word boundary)
+
+( This is for UART and I2C communications, in concert with the data array.)
+here equ station     1 allot  ( slave/target/station address for I2C/RS485 bus)
+here equ #send       1 allot  ( byte count to send)
+here equ #recv       1 allot  ( byte count to recv)
+here equ nack        1 allot  ( NACK flag)
+
+hex
+
+.ifndef in-ram
+
+flash
+
+( Lay down a vector table, using end of ram as initial SP)
+0 vector-table flash-vectors
+flash-vectors  ( make it the current table)
+
+.then
+
+( We want to write this code in Forth, so let's load the Forth kernel.)
+ld target/ARM/v6-m/kernel-itc.mu4
+
+-- ------------------------------------------------------------------------
+-- Chip init
+-- ------------------------------------------------------------------------
+#48,000,000 equ cpuclk
+.ifdef stm32f051
+   ld target/ARM/stm32/f0/51_8-init.mu4
+.then
+.ifdef stm32f072
+   ld target/ARM/stm32/f0/72_b-init.mu4
+.then
+.ifdef stm32f303
+   -d cpuclk-48m
+   ld target/ARM/stm32/f3/03_c-init.mu4
+.then
+
+( Let's define our own words for reading and writing memory.)
+variable p
+: p*   p @  c@+  p ! ;  ( read next byte from buf, incr)
+: p&   p @  c!+  p ! ;  ( write next byte to buf, incr)
+
+( It can sometimes be useful to have an 8M clock available; for instance,
+| when an AVR's fuses select an external clock and there is none. We need
+| the chip to be clocked in order to program it, or even to change the fuses
+| to select an internal clock!
+|
+| Let's output an 8M clock on PA8 - our only option - for this or any other
+| use.)
+
+: 8m-clock-output
+   5 [ RCC_CFGR 3 + #] c!  ( select 8M HSI clock, /1 as MCO)
+   [ 1 #17 << #] RCC_AHBENR set!  ( Ensure clocks are enabled to Port A.)
+   -- Set mode bits (%10) and alternate function (AF0) for PA8.
+   [ %10 #8 2* << #] GPIOA_MODER set!  ( 2 bits per pin)
+   -- AF0 is reset default; nothing to do
+   ;
+
+-- ------------------------------------------------------------------------
+-- SPI building blocks
+-- ------------------------------------------------------------------------
+: bit/  ( bit)  GPIOB_BSRR ! ;
+: bit\  ( bit)  GPIOB_BRR ! ;
+
+( /SS on PB6.)
+: ss/  ( de-assert /SS)   [ 1 6 << #] bit/ ;
+: ss\  ( assert /SS)      [ 1 6 << #] bit\ ;
+
+( /RST on PB7.)
+: rst/  ( de-assert /RST)   [ 1 7 << #] bit/ ;
+: rst\  ( assert /RST)      [ 1 7 << #] bit\ ;
+
+
+.ifdef bitbanged
+   ( Default to assembler - aka "fast-bits" - version of the bitbanging code.)
+   ld target/ARM/stm32/bitbanged-spi-full-duplex.mu4
+   : >b>  ( bits #bytes - bits')  3 << ( 8 *)  >bits> ;
+.else  ( now the default)
+   ( Use the STM32 SPI peripheral instead of bitbanging the GPIO pins.)
+   ld target/ARM/stm32/hardware-spi.mu4
+.then
+
+
+.ifdef avr
+-- ------------------------------------------------------------------------
+-- AVR programming
+-- ------------------------------------------------------------------------
+: load-cmd  ( - cmd+addr)
+   ( Load cmd and address. Host has set result to 0.)
+   cmd @
+   ( Toggle cmd.)
+   toggle c@  cmd c@  over xor  dup cmd c!
+   ( If cmd toggled to zero, or if toggle *is* zero, incr addr-lo.)
+   and 0= if  addr-lo dup c@ 1+  swap c!  then ;
+
+: setup-bulk  ( - count)  data p !  count h@ ;
+
+( The three transaction types to define: single, bulk-read, bulk-write.)
+
+( Send and receive 4 bytes.)
+: >4b>  ( bits - bits')  4 >b> ;
+
+( Send cmd, addr-hi, addr-lo, and one dummy byte, saving all responses.)
+: single      cmd @  >4b>  cmd ! ;
+
+: bulk-read   setup-bulk  for  load-cmd               >4b>  #24 u>> p&  next ;
+: bulk-write  setup-bulk  for  load-cmd  p* #24 << +  >4b>  drop        next ;
+
+.then  ( avr)
+
+
+.ifdef at89lp
+-- ------------------------------------------------------------------------
+-- AT89LP programming using fixed-length payloads, no prefix, no /SS
+-- ------------------------------------------------------------------------
+( Mostly for the AT89LP51/52.)
+
+( This version does *not* use /SS or the 0aa 55 prefix, and the data
+| payload is always either 1 byte or 64 bytes.)
+
+( TODO)
+( The three transaction types to define: single, bulk-read, bulk-write.)
+: single ;
+: bulk-read ;
+: bulk-write ;
+
+.then  ( at89lp)
+
+
+.ifdef at89lp-ss
+-- ------------------------------------------------------------------------
+-- AT89LP programming using variable-length payload, command prefix, and /SS
+-- ------------------------------------------------------------------------
+( For AT89LP828, 3240, 6440.)
+
+( This version uses SPI slave select [/SS] to bracket the command packet,
+| and also prefixes every command with 0aa 55.)
+
+( Start an SPI packet; send the two prefix bytes.)
+: <pkt   ss\  55aa 2 >b> drop  ;
+
+( End a programming packet.)
+: pkt>   ss/ ;
+
+( Send cmd, addr-hi, and addr-lo, discarding responses. Setup data buffer.)
+: setup-bulk  ( - #bytes)
+   <pkt  cmd @  3 >b> drop  data p !  count h@ ;
+
+( The three transaction types to define: single, bulk-read, bulk-write.)
+
+( Send cmd, addr-hi, addr-lo, and one dummy byte, saving all responses.)
+: single       <pkt  cmd @  4 >b>  cmd !  pkt> ;
+
+( For bulk commands, send cmd and address bytes, then send or recv a
+| buffer of data.)
+
+: bulk-read    setup-bulk  for   0  1 >b>  #24 >> p&  next  pkt> ;
+: bulk-write   setup-bulk  for  p*  1 >b>  drop       next  pkt> ;
+
+.then  ( at89lp-ss)
+
+
+-- ------------------------------------------------------------------------
+-- Serial communication - UART
+-- ------------------------------------------------------------------------
+: uart-init
+   -- First, enable clocks to Port A. We are using uart1 on pins PA9 and PA10.
+   [ 1 #17 << #] RCC_AHBENR set!
+
+   -- Enable clocks to uart1 as well.
+   [ 1 #14 << #] RCC_APB2ENR set!
+
+   -- Set mode bits (%10) and alternate function (AF1) for uart.
+   [ %1010 #9       2*  << #] GPIOA_MODER set!  ( 2 bits per pin)
+   [    11 #9  8 -  4 * << #] GPIOA_AFRH set!   ( 4 bits per pin)
+
+   -- Now for the uart itself.
+   USART1_CR1  0 over ! ( reset and disable USART)
+   %1100 ( TE+RE) ( enable tx and rx)  over set!
+.ifdef midi
+   [ cpuclk #31,250 / #] USART1_BRR !
+.else
+   [ cpuclk #38,400 / #] USART1_BRR !
+.then
+   1 ( UE) ( enable USART)  swap set! ;
+
+: ?status  ( bit)
+   begin  USART1_ISR @  over and  until  drop ;
+
+: uart-recv  ( - b)   [ 1 #5 << ( RXNE bit) #] ?status  USART1_RDR @ ;
+: uart-send  ( b)     [ 1 #7 << ( TXE bit)  #] ?status  USART1_TDR ! ;
+
+: uart-send-recv
+   data p !  #send c@ for  p* uart-send  next
+   data p !  #recv c@ for  uart-recv p&  next ;
+
+
+-- ------------------------------------------------------------------------
+-- Serial communication - I2C
+-- ------------------------------------------------------------------------
+: i2c-init
+   -- We are using I2C2, with SCL on PB10, SDA on PB11. spi-init has turned
+   -- on the PortB clock.
+
+   -- Enable clocks to ic2c.
+   [ 1 #22 << #] RCC_APB1ENR set!
+
+   -- Set mode bits (%10) and alternate function (AF1) for i2c2.
+   [ %1010 #10       2*  << #] GPIOB_MODER set!  ( 2 bits per pin)
+   [    11 #10  8 -  4 * << #] GPIOB_AFRH set!   ( 4 bits per pin)
+
+   -- I'm not sure if setting the pins to alternate function causes them to
+   -- be open-drain, so to be sure, let's set that as well.
+   [   %11 #10           << #] GPIOB_OTYPER set!  ( 1 bit per pin)
+
+   -- Now for the I2C itself.
+   I2C2_CR1  0 over ! ( reset and disable I2C)
+   -- Timing info from Table 95 of RM0091 manual. We want to run 100kHz
+   -- "standard mode" clock. Here are the recomended settings, based on a
+   -- 48M clock (values are in hex):
+   -- PRESC=0b    /12, so 4 MHz clock (250ns per cycle)
+   -- SCLDEL=04    5 cycles = 1.25us
+   -- SDADEL=02    2 cycles = 500ns  ( why isn't this 3 cycles?)
+   -- SCLH=0f     16 cycles = 4us
+   -- SCLL=13     20 cycles = 5us
+   -- b042_0f13 I2C2_TIMINGR !
+
+   -- Let's try some more "relaxed" timing...
+   -- SCLDEL=07    8 cycles = 2us
+   -- SDADEL=08    8 cycles = 2us
+   -- SCLH=13     20 cycles = 5us
+   -- SCLL=13     20 cycles = 5us
+   b078_1313 I2C2_TIMINGR !
+
+   1 ( PE) ( enable I2C)  swap set! ;
+
+: ?i2c-status  ( mask - status)
+   begin  I2C2_ISR @  over and  ?until  nip ;
+
+( I2Cx_ISR bits)
+1 1 << equ TXIS
+1 2 << equ RXNE
+1 4 << equ NACKF
+1 5 << equ STOPF
+1 6 << equ TC
+
+( I2Cx_CR2 bits)
+1 #13 << equ START
+1 #14 << equ STOP
+
+( read=1, write=0)
+: i2c-start  ( count rd/-wr)
+   ( read=1, write=0) #10 <<
+   swap ( count) #16 << +
+   station c@ ( slave-addr, low bit 0) +  I2C2_CR2 !
+   data p !
+
+   START I2C2_CR2 set! ( send start bit and addr+r/-wr) ;
+
+( If we got a NACK back, store a 1 in the nack slot, and return to to the
+| *caller* of i2c-send-recv with an empty stack.
+|
+| If we got a valid status and no NACK, return that status to our caller.)
+
+( XXX Ugly but simple - ?nack exits from i2c-send-recv by dropping 3 ra's)
+
+: ?nack  ( status-mask - status | <nothing>)
+   ?i2c-status
+   dup NACKF and if
+      NACKF I2C2_ICR !  ( clear NACKF)  drop ( status)
+      r> drop  r> drop  r> drop  ( exit from i2c-send-recv)
+      1 nack c!  ( set the nack flag for usb client)
+   then ;
+
+: i2c-send?  ( - more?)  [ NACKF TC TXIS + + #] ?nack  TXIS and ;
+: i2c-recv?  ( - more?)  [ NACKF TC RXNE + + #] ?nack  RXNE and ;
+
+: i2c-send-buf   begin  i2c-send? while  p* I2C2_TXDR !  repeat ;
+: i2c-recv-buf   begin  i2c-recv? while  I2C2_RXDR @ p&  repeat ;
+
+( Send/recv once. Caller needs to deal with retrying after a NACK.)
+: i2c-send-recv
+   0 nack c!  ( Ok)
+   #send c@     0 ( write)  i2c-start  i2c-send-buf
+   #recv c@ ?if 1 ( read)   i2c-start  i2c-recv-buf  then
+   STOP I2C2_CR2 set! ( send STOP bit)  100 wait ;
+
+
+-- ------------------------------------------------------------------------
+-- Jump tables
+-- ------------------------------------------------------------------------
+: (dispatch)  ( index)
+   1+ cells r@ +
+   dup r@ @ u< if  r> drop  @execute ^  then
+   drop  r> @ >r  ( skip jump table and keep executing) ;
+
+compiler: [:  ( start a jump table)
+   \t (dispatch) ,  here  0 , ( ip past last cfa) ;
+
+compiler: :]  ( end a jump table)
+   here  swap  image-! ;
+
+
+-- ------------------------------------------------------------------------
+-- Core command processing loop
+-- ------------------------------------------------------------------------
+( Command index is above the word that it executes.)
+: do-command  ( n)
+           ( 10    11       12           13 )
+   10 - [:  rst\  rst/  slow-clock  fast-clock
+           (  14       15         16 )
+            single  bulk-read  bulk-write
+           (      17             18 )
+            uart-send-recv  i2c-send-recv  :] ;
+
+here ]  ( chip-init)
+   clock-init  led-init  spi-init  uart-init  i2c-init  8m-clock-output
+   flash-leds  slow-clock  ss/  rst/
+   begin
+      face_d000 semaphore !  ( ready for another command)
+      0  begin  drop  semaphore @  dup ffff_ff00 and  deca_f000 =  until
+      0ff and  ( command byte)  do-command
+   again [
+
+( Startup code! Since we have a Forth kernel, let's write the startup code
+| in Forth!)
+
+label startup
+.ifdef in-ram
+   cpsid  ( disable interrupts)
+   ( Ignore the sp we were passed. Set rp and sp to end of RAM.)
+   @ram #ram + rp lit   rp sp mov
+.else
+   Reset_exc handler
+   ( Use SP from reset vector. It should point to the end of RAM.)
+   sp rp mov
+.then
+   #64 cells sp sp sub  ( RP at end of RAM; SP below)
+   ( chip-init)  ip  lit
+   deca_fbad     top lit
+   next  ;c
+   pool,
+
+.ifndef in-ram
+
+HardFault_exc handler
+   here b  ;c  ( hang)
+
+NMI_exc handler
+default-handler
+   lr bx  ;c  ( return to sender!!)
+
+.then  ( not in-ram)
+
+
+( XXX The following is for interactive testing and needs to go away
+| eventually.)
+
+.ifdef testing
+
+: >lohi  ( w - lo hi)
+   dup  0ff and  swap 8 >> ;
+
+: >hilo  ( w - hi lo)
+   >lohi swap ;
+
+: lohi>  ( lo hi - w)  8 << + ;
+
+: shuffle  ( cmd addr data - data addr-lo addr-hi cmd)
+   -rot  >lohi  rot ;
+
+: index  ( offset)
+   100 0 do  dup i +   i data + c!  loop  drop ;
+
+: wipe
+   100 0 do  0ff i data + c!  loop ;
+
+.ifdef i2c
+
+( For recording the NACKs resulting from a series of send-recv calls. This
+| way it's possible, by counting, to see which calls got NACKed and which
+| succeeded.)
+
+#128 buffer tears  ( as in "trail of")
+variable t
+: #t  t @ tears - ;
+: t&  t @  c!  1 t +! ;
+
+: ii  clock-init  led-init  spi-init  i2c-init  flash-leds
+      0d0 station c! ( i2c address) rst\  1000 wait  rst/
+      tears t ! ;
+
+( Useful delays if we want them.)
+( Compute the number of times to loop. Do this on the host, then pass the
+| result to wait, which consumes a loop count.)
+
+( We have to calculate this here because cpuclk is only visible in meta
+| mode. ;-)
+
+cpuclk ( clks/s)  #1,000,000 ( us/s) /  ( => clks/us)
+{
+: us  ( us)
+   [ ( clks/us) #] *  ( => clks)  #13 ( clks/loop) /  ( => loops) ;
+
+: ms   #1000 *  us ;
+}
+
+( Try a few times if we get a NACK.)
+( send/recv)
+: s/r  ( #out #in)
+   #recv c!  #send c!
+   0 ( #nacks)  #10 ( tries)
+   begin
+      i2c-send-recv  nack c@
+   while
+      [ 5 ms #] wait  swap 1+ swap  1- dup 0=
+   until
+   then  drop ( tries)  t& ( record tear) ;
+
+: #out  p @ data - ;
+
+: iv  10 data c! 1 0 s/r  14 data c! 1 4 s/r ;
+: isp  13 data c! 1 2 s/r  data c@+ c@ lohi> 1+ ;
+: ii-set-addr  ( a)  >hilo 11 data c!+ c!+ c!  3 0 s/r ;
+
+: ii-stop   1b data c!  1 0 s/r ;
+: ii-start  1a data c!  1 0 s/r ;
+
+: iaa  ( addr)  10 for  dup ii-set-addr  next drop ;
+: ix  80 0 do    i  data 1+ i +  c!  loop ;
+: iz  80 0 do  0ff  data 1+ i +  c!  loop ;
+: ixf  ( - #out)  0  40 for  dup p& 1+  dup p& 1+  1 p&  next  drop  #out ;
+
+: ee  ( reset eeprom data)
+   0 ii-set-addr  44 33 22 d0 19 data c!+ c!+ c!+ c!+ c!  5 0 s/r ;
+
+: ii-rd   ( count space addr)  ii-set-addr  14 + data c!  1 swap s/r ;
+: ii-wrx  ( count space addr)  ii-set-addr  17 + data c!  ix  1+ 0 s/r ;
+: ii-wrz  ( count space addr)  ii-set-addr  17 + data c!  iz  1+ 0 s/r ;
+
+: ii-set-flash-cmd  ( cmd - #out)
+   data p !  17 p&  0 p& 0 p& ( dummy word)  p& ( cmd)  #out ;
+
+: ii-flash-erase  ( a)
+   ii-set-addr
+   3 ( erase page) ii-set-flash-cmd  0 s/r ;
+
+: ii-flash-write-words  ( a)
+   ii-set-addr
+   data p !  17 p&  ixf  0 s/r ;
+
+: ii-flash-write-page  ( a)
+   ii-set-addr
+   5 ( write-page) ii-set-flash-cmd  0 s/r ;
+
+: ii-flash-enable
+   0 ii-set-addr
+   11 ( re-enable RWW)  ii-set-flash-cmd  0 s/r ;
+
+: ii-wr-flash  ( addr)
+   ii-stop
+   dup ii-flash-erase
+   dup ii-flash-write-words
+       ii-flash-write-page
+   ii-flash-enable ;
+
+.then  ( i2c)
+
+.ifdef at89lp-ss
+
+( Testing. Set things up as if for an at89lp chip.)
+: tt
+   clock-init  led-init  spi-init  flash-leds
+   fast-clock  ss/ rst/ ;
+
+: ss   ( cmd addr)  >lohi rot  cmd  c!+ c!+ c! ;
+: bb   ( cmd addr count)  count h!  ss ;
+
+: rd   ( cmd addr count)  bb  bulk-read ;
+: wr   ( cmd addr count)  bb  bulk-write ;
+
+: +prog
+   rst\  0ac 5300 ss single  cmd @ ;
+
+.then  ( at89lp-ss)
+
+
+( Let's try the atmega324.)
+.ifdef avr
+: tt
+   clock-init  led-init  spi-init  flash-leds
+   slow-clock  rst/ ;
+
+: avr-bulk-setup  ( cmd addr toggle count)
+   count h!  shuffle  cmd c!+ c!+ c!+ c! ;
+
+: avr   ( cmd addr data)  shuffle  cmd c!+ c!+ c!+ c!  single ;
+: avr2  ( cmd addr data - r2)  avr  addr-lo c@ ;
+: avr3  ( cmd addr data - r3)  avr  result c@ ;
+
+: rd   ( cmd addr toggle count)  avr-bulk-setup  bulk-read ;
+: wr   ( cmd addr toggle count)  avr-bulk-setup  bulk-write ;
+
+: +prog
+   slow-clock  rst\  3_0000 wait  0ac 53_00 0 avr2 ;
+
+: -prog  rst/ ;
+
+: status
+   0f0 0 0 avr3 ;
+
+: read-sig  ( - s0:s1:s2)
+   30 2 0 avr3
+   30 1 0 avr3
+   30 0 0 avr3
+   lohi>  lohi> ;
+
+: read-fuses  ( - fuses)
+   50 00_00 0 avr3
+   58 08_00 0 avr3
+   50 08_00 0 avr3  ( fuse hfuse efuse)
+   lohi>  lohi> ;
+
+: read-lock
+   58 0 0 avr3 ;
+
+.then  ( avr)
+
+.then  ( testing (interactive)

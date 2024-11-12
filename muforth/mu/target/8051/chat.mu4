@@ -1,0 +1,231 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+
+loading 8051/chat.mu4 (target)
+
+( Since we don't yet have a meta/target/cross compiler for the 8051, and
+  may never, let's make it easy to write "label" words in assembler.)
+
+hex
+
+
+assembler
+: bank3  ( reg - dir)
+   dup \a r0 \a a within if  7 and  18 +  ^  then
+   error" only r0 to r7 allowed" ;
+
+forth
+
+
+( Taking inspiration from the wildly successful HC08 serial chat protocol.
+
+  Responds to the following commands. NOTE: these are hex values!
+
+00 - 0f  idle        - these command bytes are ignored
+1a - ff  idle        - these command bytes are ignored
+
+10  version-addr     - get the address of the version commit
+11  set-addr         - set dptr to 16-bit address
+12  run              - set PC
+13  get-status       - get the machine SP
+
+14  read-flash       - read one byte of flash, inc dptr
+15  read-ram         - read one byte of ram, inc dptr
+16  read-xram        - read one byte of xram, inc dptr
+
+17  write-flash      - erase a page or program one byte,
+                     - inc dptr, return status byte
+18  write-ram        - write one byte to ram, inc dptr
+19  write-xram       - write one byte to xram, inc dptr
+1a  set-sp           - set the machine SP -r0-
+1b  get-tos          - get top of stack
+1c  set-tos          - set top of stack
+1d  page erase       - erase page @dptr
+1e  unlock flash     
+1f  lock flash
+20  write page
+21  lx               - toggle led, P1.2
+)
+
+( Like all chat code, we have do the following:
+
+  * set up the clock or clocks;
+  * turn off the watchdog
+  * set up the uart
+  * enter a chat loop, interpreting commands from the host
+)
+
+( Compile the first 32 bits of the current muforth Git commit. When asked
+  for the version, return these four bytes, in big-endian order.)
+
+__meta
+flash
+
+#flash "200 \f - goto ( chat routines at end of flash)
+
+label uart-int
+   IE .4 clr
+   SCON .1 bclr-force? if
+   SCON .0 clr
+   "18 # PSW orl
+   SBUF r7 mov
+   then
+   reti
+;c
+
+label version
+   muforth-commit drop 8 evaluate  >0123  c, c, c, c,
+( Host uses send and recv. Let's do the same here.)
+label recv-byte
+   begin  SCON .0 ( RI) bset? until
+   SCON .0 clr   SBUF r7 mov   ret  ;c
+
+( This assumes that reset code has set TI.)
+label send-byte
+   r7 SBUF mov
+   begin  SCON .1 ( TI) bset? until
+   SCON .1 clr
+   ret  ;c
+
+( Return word value in r6:r7)
+label recv-word
+    recv-byte acall   r7 bank3 r6 mov   recv-byte ajmp  ;c
+
+( Byte is in A.)
+label inc-and-put
+   dptr inc   a r7 mov   send-byte ajmp  ;c
+
+label trigger
+    IE .7 clr
+    ta 1 # IAPTRG orl
+    IE .7 setb ret ;c
+
+label do-command
+   
+   r7 a mov   -0e # a add   a r7 mov
+   r7 decz? if ( 09 return from tim1-int)    ret   then
+label version-addr
+   r7 decz? if ( 10 version-addr)  version # dptr mov   ret   then
+label set-addr
+   r7 decz? if ( 11 set-addr)  recv-word acall   r6 DPH mov   r7 DPL mov   ret  then
+label run
+   r7 decz? if ( 12 run)
+      recv-word call  push-m
+      r7 bank3 push  r6 bank3 push  PSW "18 mclr ret ( switch to bank 0)
+      resolve-m "18 # PSW orl send-byte call ret   then
+label get-status
+   r7 decz? if ( 13 get-status)
+      0 r7 mov   send-byte ajmp  then
+label read-flash
+   r7 decz? if ( 14 read-flash)
+      a clr   @a+dptr a movc   inc-and-put ajmp  then
+label read-ram
+   r7 decz? if ( 15 read-ram)
+      DPL r1 mov   @r1 a mov   inc-and-put ajmp  then
+label read-xram
+   r7 decz? if ( 16 read-xram)
+      @dptr a movx   inc-and-put ajmp  then
+label write-flash
+   r7 decz? if ( 17 write-flash)
+      "21 # IAPCN mov
+      recv-byte acall
+      r7 IAPFD mov
+      DPH IAPAH mov
+      DPL IAPAL mov
+      trigger call 
+      dptr inc send-byte j     ( send back a byte to indicate we are done)
+      then
+label write-ram
+   r7 decz? if ( 18 write-ram)
+       recv-byte acall   DPL r1 mov   r7 bank3  @r1 mov   dptr inc   ret  then
+label write-xram
+   r7 decz? if ( 19 write-xram)
+       recv-byte acall   r7 a mov   a @dptr movx   dptr inc  ret then  ( fall thru)
+label set-sp    
+    r7 decz? if ( 1a set-sp)
+       recv-byte acall r7 0  mov  ret then
+label get-tos
+    r7 decz? if ( 1b get-tos)
+       DPL r7 mov send-byte call DPH r7 mov send-byte call
+       ret then
+label set-tos
+    r7 decz? if ( 1c set-tos)
+       recv-word call r6 DPH mov r7 DPL mov ret then
+label p-erase ( write or erase) 
+    r7 decz? if ( 1d page-erase)
+label pp-erase
+    DPH IAPAH mov
+    DPL IAPAL mov
+    "ff # IAPFD mov
+    "22 # IAPCN mov
+    trigger call
+    send-byte j then
+label ulock
+    r7 decz? if ( 1e unlock flash)
+       ta 1 # CHPCON orl
+       ta 1 # IAPUEN orl
+       ret then
+label lock
+    r7 decz? if ( 1f lock flash)
+       ta CHPCON 0 bclr
+       ret then
+label pmove  
+    r7 decz? if ( 20 pmove)
+    pp-erase call
+    "80 # r5 mov
+    0 # r1 mov begin
+    "21 # IAPCN mov
+    @r1 a movx
+    a IAPFD mov
+    DPH IAPAH mov
+    DPL IAPAL mov
+    trigger call 
+    r1 inc dptr inc
+    r5 decz? until ret then ;c
+label lx
+    r7 decz? if ( 21 lx)
+: LX  a[
+    P1 .2 cpl then
+   ( unknown command) ret  ;c
+
+"93 goto
+label do-reset
+    ta "5a PORDIS mov ta "a5 PORDIS mov
+    PCON 4 bclr
+    P0 .6 setb          ( set up tx/rx pins)
+    P0M1 "c0 mclr       ( P0 6 and 7 as quasi-bidirectional)
+    P1M2 2 rsetb         ( P1.2 -LED- push-pull)
+    P1M1 2 bclr
+    4 # P1 orl
+comment ===
+    RCTRIM0 a mov       ( decrement RCTRIM with 15 to set Sysclock to 16.6 MHz)
+    "f1 # a add         ( this is needed for #115200 bps uart baudrate)
+    ta a RCTRIM0 mov
+===
+    "80 # PCON orl      ( double baud enable)
+    "ff # RH3 mov 
+    "e6 # RL3 mov       ( "f7 for 115200 baud)
+    "50 # SCON mov      ( enable receiver)
+    "23 # SP mov        ( SP is rsp)
+    "e0 # r0 mov        ( bank0.r0 is dsp)
+    "28 # T3CON orl     ( timer 3 as uart baud rate clock, start tim3)
+--    "10 # IPH orl       ( uart high intrrupt priority)
+    "90 # IE mov        ( enable Serial interrupt, all interrupts)
+    "12 c,              ( lcall boot vector, default: return)
+label boot  mark  ( boot vector; lcall return  )
+--    IE r7 mov send-byte call
+label sleep
+   begin  1 # PCON orl do-command call  IE .4  setb again  ;c   ( idle mode)
+
+label return ] then ;
+
+0 goto  __asm  do-reset j 
+INT_S0 goto uart-int j ;c
+"100 goto  ( reserve space for interrupt vectors)
+
+comment ===
+    RCTRIM0 a mov
+    "f1 # a add 
+    ta a RCTRIM0 mov
+===

@@ -1,0 +1,8 @@
+loading MINDEV/basic
+
+-d MINDEV
+
+ld target/STM8/MINDEV.mu4
+ld aliases
+
+__meta hex

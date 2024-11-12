@@ -1,0 +1,8 @@
+loading SSD1306 OLED driver
+
+-d STM8L051F3 
+
+ld target/STM8/STM8L051F3.mu4
+ld aliases
+
+ld work/lib/SSD1306

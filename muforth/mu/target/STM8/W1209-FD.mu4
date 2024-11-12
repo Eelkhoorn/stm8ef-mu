@@ -1,0 +1,47 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading  STM8/W1209-FD.mu4 : Definitions for W1209-FD (STM8S103)
+decimal
+
+-d big-endian
+2 constant bytes/cell
+#64 constant /page
+
+$" target/STM8/W1209-FD.bin" $KERNEL.bin
+$" work/W1209-FD/kernel.mu4" $kernel.mu4
+
+-- make sym link (system is defined in muforth/src/file.c)
+z" /usr/bin/[ -h /tmp/target.con ] && rm /tmp/target.con" system
+z" /usr/bin/ln -s /home/pi/build/muforth-latest/mu/target/STM8/W1209-FD.con /tmp/target.con" system
+
+ld target/STM8/chains.mu4
+ld target/common/memory.mu4
+
+16 make-aspace
+64 Ki make-image
+dup make-region flash
+dup make-region ram
+dup make-region eeprom
+    make-region bogus
+
+( IMPORTANT: these values are hardcoded in forth.asm)
+"340 constant @flashbuf
+
+-- 1 serial-timeout
+
+1  Ki constant ram-end
+"a000 1- constant flash-end
+
+variable baudrate
+#57600 baudrate !
+
+1 Ki  constant #ram
+8 Ki constant #flash
+$4000 constant @eeprom
+#640  constant #eeprom
+
+ld target/common/equates0.mu4
+ld target/STM8/STM8S103.efr
+ld target/STM8/build.mu4

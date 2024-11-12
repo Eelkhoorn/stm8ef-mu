@@ -1,0 +1,60 @@
+.ifndef (BF!)
+
+-d (BF!)
+
+loading work/lib/BF!
+
+--  STM8eForth : BF! and LEBF!                                       TG9541-200717
+--  ------------------------------------------------------------------------------
+
+--  Write bit to a bitfield stored in one or more cells (16 bit words)
+--  Set/reset bit #u (0..8191) in a cell array starting at address a to bool t
+hex
+__meta
+comment ===
+
+: SR3A
+-- LDW Y,X  LDW X,(X)  LD A,XL  AND A,#0x07  SRLW X  SRLW X  SRLW X  EXGW X,Y  LDW (X),Y  RET
+    [ 9093 , fe9f , a407 , 5454 , 5451 , ff c, ] ;
+     
+-- TOS/8, modulo in A
+: SR3A ( n -- n>>3 A:n%8 )
+  DOXCODE [
+  $9F c,          --         LD      A,XL
+  $A407  ,      --         AND     A,#0x07
+  $54 c,          --         SRLW    X
+  $54  c,          --         SRLW    X
+  $54  c,          --         SRLW    X
+   ] ;
+
+--  Write bit to a Little Endian bitfield (list of bytes)
+--  Set/reset bit #u (0..8191) in an array starting at address a to bool t
+: LEBF! ( b a n -- )
+  SR3A ( n/8 | A:n%8 )
+  [ $88 c,        --         PUSH    A
+   here  ]  +         --         _BFS:
+  [ $84  c,  ]   --         POP     A
+  A> ( b a n )  B! 
+;
+
+--  Write bit to a bitfield stored in one or more cells (16 bit words)
+--  Set/reset bit #u (0..8191) in a cell array starting at address a to bool t
+: BF! ( b a n -- )
+  SR3A ( n/8 | A:n%8 )
+  [ $88 c, ]      --         PUSH    A
+  1 XOR [         --   Big Endian byte order
+  here $20 c, - 2 -  c,  --    JRA     _BFS
+
+: LEBF! ( b a n -- )
+  SR3A ( n/8 | A:n%8 )
+  [ $88 c,       --         PUSH    A
+===
+hex
+: BF! ( b a n -- )
+  [ 9093 , fe9f , a407 , 889f , 47 c, 4747 , a801 , 93 c, e701 , ]
+   + 
+  [ $84  c,  ]   --         POP     A
+  ( A>) [ 5a5a , 7fe7 ,  1 c, ] B! ;
+ 
+
+.then

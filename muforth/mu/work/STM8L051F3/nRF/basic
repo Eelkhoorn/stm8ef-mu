@@ -1,0 +1,9 @@
+loading STM8L051F3/nRF/basic
+
+
+-d STM8L051F3
+
+ld target/STM8/STM8L051F3.mu4
+ld target/STM8/nRF24L01.efr
+ld aliases
+__meta

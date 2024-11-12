@@ -1,0 +1,45 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+( Load build environment for v7-M device.)
+
+: [v7] ;  ( load v7-M-only equates)
+ld target/ARM/v6-m/core-equates.mu4
+
+ld lib/host-prompt.mu4           ( helpful prompt when in host mode)
+ld target/common/chains.mu4      ( common metacompiler chains and token consumers)
+ld target/ARM/v6-m/memory.mu4    ( memory model, and image space)
+ld target/ARM/v6-m/srec.mu4      ( reading Motorola S-rec files into memory)
+ld target/ARM/v6-m/ihex.mu4      ( reading Intel hex files into memory)
+ld lib/uf2.mu4                   ( generating UF2 image files)
+ld target/ARM/v6-m/disasm.mu4    ( v6-m subset)
+ld target/ARM/v7-m/disasm.mu4    ( v7-m subset)
+ld target/ARM/v6-m/asm.mu4       ( v6-m subset)
+ld target/ARM/v7-m/asm.mu4       ( v7-m subset)
+ld target/ARM/v7-m/bitband.mu4   ( Cortex-M3/M4 bitbanding support)
+ld target/ARM/v6-m/meta.mu4
+ld target/ARM/v6-m/interact.mu4  ( chatty debug)
+
+( Before compiling the flash helper routines into ram, possibly allot space
+| for a ram-resident vector table.)
+
+.ifdef isr-debug
+   ram
+   0 vector-table ram-vectors
+.then
+
+ld target/ARM/v6-m/flash.mu4     ( programming and verifying the flash)
+
+.ifdef bootloader
+   h @  ram  @ram #bl-ram +  region!  h !
+   ld target/common/serial.mu4
+   ld target/ARM/debug/stm32-bootloader.mu4
+   -- DFU is DEPRECATED until I can get it working.
+   -- ld target/ARM/debug/stm32-dfu.mu4   ( even though not all targets support it)
+.then
+
+( These settings will stick around if we're loaded with ld!)
+__meta
+hex
+ram

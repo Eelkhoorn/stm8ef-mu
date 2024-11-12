@@ -1,0 +1,8 @@
+loading W1209-FD/basic
+
+-d W1209-FD
+
+ld target/STM8/W1209-FD.mu4
+ld aliases
+
+__meta hex

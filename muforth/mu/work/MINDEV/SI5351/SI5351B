@@ -1,0 +1,131 @@
+loading SI5351B
+
+flash
+
+--  set freq
+: so ( freq -- fl fh)
+	$10000 /mod 
+;
+__meta
+$7868 $0004 2constant PLU	--  Minimal undevided pll freq: 6e8/2048
+$4600 $23C3 2constant PLL	--  Minimal pll freq: 6e8
+$7840 $017D 2constant XIN	--  crystal freq: 25 MHz
+$4240 $000F 2constant mc	--  1 MHz
+
+VARIABLE FO 2 allotr
+VARIABLE MSD			--  Multisynt divider, d
+VARIABLE RFO 2 allotr	--  Fout x R
+
+--  set/reset n bits in double @ a from bit i onwards
+: sba ( a u i n -- )
+	OVER + SWAP do 2DUP 1 AND I ROT SWAP BF! 2/ loop 2DROP
+;
+
+: D+! ( d a -- )
+	DUP >R D@ D+ R> D!
+;
+
+--  helper
+: h!p ( Pl Ph a n -- )
+	 OVER + ROT
+;
+
+--  set/reset MSx_DIVBY4
+: !D4 ( f i -- )
+	8 * #44 + DUP @R
+	ROT if
+		$C OR
+	else
+		$F3 AND
+	then SWAP !R
+;
+
+--  store P values to regs, n = 1..3
+: !P ( Pl Ph n a -- )
+	SWAP ULOCK
+	DUP 3 = if DROP
+	4 h!p 4 4 sba
+	!
+	else 
+	2 = if
+	4 h!p 0 4 sba
+	6 + !
+	else
+	1 h!p 0 2 sba
+	3 + !
+	then then
+	LOCK
+;
+
+--  calculate R
+: CLR ( d -- n )
+	PLU 2SWAP D/
+	2SWAP 2DROP DROP
+	0 begin
+	SWAP DUP 0= NOT while
+		2/ SWAP 1+
+	repeat DROP
+	DUP MR 8 + ROT
+	ULOCK #28 3 sba LOCK
+;
+
+--  set c to $F4240 (= Fx/25) MHz
+--  calculate remaining settings
+: CLD ( d i -- )		--  F_output, clock#
+	>R [ #15000000000 so swap ] literal literal
+	3 PICK 3 PICK D< if
+-- 	CR ." F_out > 150 MHz"
+		4 DUP MSD ! D* RFO D!
+		0 0 1			--  P1 = 0, divby4 = 1
+	else
+		2DUP CLR SL D*
+		2DUP RFO D!		--  R x Fo
+		PLL 2SWAP D/
+		2SWAP 2DROP DROP
+		DUP 2 MOD DUP if --  round up
+			+
+		else
+			DROP 2+
+		then
+		DUP MSD !
+		2- 2- $80 UM*
+		0				--  divby4 = 1
+	then
+	R> !D4
+	1 [ MR #8 \f + ] literal !P
+	RFO D@ MSD @ D*
+	XIN D/ DROP		--  Feedback divider ( (Fin x b/c)l (Fin x b/c)h a)
+	4 - #128 * >R
+	2DUP
+	#128 D* XIN D/ DROP DUP ( rem_l rem_h 128b/c 128b/c) 
+	R> + 0 1 MR !P ( 128b/c) >R ( remain_l remain_h )
+	2DROP
+	#25 0 D/		--  b
+	#128 D*
+	mc 2DUP 3 MR !P	--  c = 1 MHz 
+	R> D* D-
+	2 MR !P 2DROP
+	LOCK
+;
+
+ram
+comment ===
+
+Offset:	5.3kHz@45MHz  ->  118 ppm
+
+--  boot task 45 MHz
+: bgt init #44994700 so 0 CLD 0 UD ;	/  45 MHz
+: bg2 init   #199976 so 0 CLD 0 UD ;	/ 200 kHz
+
+
+--  set/reset MSx_int
+: !I ( f i --)
+	#16 + DUP @R
+	ROT if
+		$40 OR
+	else
+		$BF AND
+	then  SWAP !R
+;
+
+===

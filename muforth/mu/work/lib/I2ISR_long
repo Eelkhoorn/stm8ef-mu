@@ -1,0 +1,262 @@
+.ifndef (I2ISR)
+
+-d (I2ISR)
+
+loading I2ISR !! Don't forget to flash the I2C interrupt vector !!
+
+comment ===
+STM8 eForth: I2C Master ISR for the STM8 I2C peripheral        TG9541 - 201205
+------------------------------------------------------------------------------
+This is a variant of Thomas' I2C ISR, with an extra three bytes in the I2ISR array
+for a command pointer and counter. (366 bytes)
+
+The I2ISR I2C ISR code acts as a driver for I2C write/read transfers
+
+Register definitions in this file are the same for STM8S and STM8L:
+load the I2ISR code after e.g. "--res MCU: STM8L051" in the application code
+see Example at the end of this file
+
+API:
+  * I2ISR array, acts as an ISR "register file"
+    - byte 0 : ER < 0 indicates error (bits 6:0 copied from I2C_SR2)
+    - byte 1 : SA slave address (0..127)
+    - byte 2 : CCOUNT number of command bytes
+    - byte 3 : TCOUNT number of bytes in write phase
+    - byte 4 : RCOUNT number of bytes in read phase
+    - byte 5,6  : CPOINT command buffer pointer
+    - addr 7,8  : TPOINT transmit buffer pointer
+    - addr 9,10 : RPOINT receive buffer pointer
+  * I2S ( c -- ) start I2C sequence defined by I2ISR registers
+
+Usage notes:
+  * use I2S to set 7bit slave address and reset error
+  * use ?I2D to check for error (indicated by I2ISR MSB)
+  * use ?I2E to check for error (indicated by I2ISR MSB)
+  * CPOINT points to a buffer or variable that contains the
+    I2C slave "command" (e.g. DS1621 temperture sensor) or "memory
+    address" (e.g. 24C64 EEPROM). 
+    TPOINT points to the data to be written
+  * RPOINT contains the read target buffer or variable address
+    while CPOINT points to I2C slave "command" or "address" data
+===
+
+forth
+ram
+
+__meta
+
+--  Constants for I2ISR register access for user code
+VARIABLE I2ISR  #11 allot    --  the register file
+I2ISR 2 + constant CCOUNT  -- char number of command bytes
+I2ISR 3 + constant TCOUNT  -- char number of bytes TX
+I2ISR 4 + constant RCOUNT  -- char number of bytes RX
+I2ISR 5 + constant CPOINT  -- points to command buffer 
+I2ISR 7 + constant TPOINT  -- points to TX buffer, starting with CMD/ADDR
+I2ISR 9 + constant RPOINT  -- points to RX buffr
+
+flash
+
+--  ready?, CCOUNT, TCOUNT and RCOUNT ans BUSY back to zero?
+--    or error lagged.
+: ry?  ( -- )
+	[ begin 
+	   $C6 c, I2ISR ,     --  LD A, error byte
+	   $A480 ,				    --  ADD A, $80
+	   0= if			        --  JRNE IF, exit if error
+	   $C6 c, I2C_SR3 ,		--  LD A, I2C_SR3
+	   $A402 ,				    --  AND A, #2, BUSY
+	   $CA c, CCOUNT ,  	--  OR A, CCOUNT
+	   $CA c, TCOUNT ,  	--  OR A, TCOUNT
+	   $CA c, RCOUNT ,  	--  0R A, RCOUNT
+	   0=				          --  JRNE M
+	   swap					      --  swap branch pointers
+	until then ]
+;
+
+--  start the sequence by enabling interrupts and setting I2C_CR2 bit0 (START)
+: I2S ( c -- )      --  start i2C write/read - user code sets T/RCOUNT, T/RPOINT
+  ( c ) I2ISR !     --  reset flag (MSB), set device address (LSB)
+  [ 0 I2C_CR2 1 ]B! --  clear stop bit
+  [ 3 I2C_ITR ]litC!   --  set ITERREN and ITEVTEN
+  [ 1 I2C_CR2 0 ]B!
+  ry?				--  wait for communication to finish
+;
+
+--  I2C Master ISR headerless code
+: I2C_int [ 0 constant S ]
+--  SAVEC   (no use of XREG0 in I2C_int)
+  --  EV5 START has just been issued - trigger sending ADDR and R/W
+  [ I2C_SR1 0 ( SB ) ]B@IF [
+    $C6 c, I2C_DR ,          --  LD   A,I2C_DR  ; reset SB
+    $C6 c, I2ISR 1 + ,       --  LD   A,SA      ; slave address
+    $48 c,                   --  SLL  A         ; shift left for R/W flag
+    $97 c,                   --  LD XL, A
+    $C6 c, CCOUNT ,          --  LD A, CCOUNT
+    $CA c, TCOUNT ,          --  TCOUNT OR
+    0= if                    --  JRNE, CCOUNT C@ TCOUNT C@ OR 0= IF
+      $725D , RCOUNT ,       --  TNZ  RCOUNT
+      here constant check
+      !0= if                 --  RCOUNT C@ IF
+         $5C c,              --  INC X        ; set R flag
+      then
+    then
+       $9FC7 , I2C_DR ,       --  LD A,XL  LD I2C_DR,A  ; send device address
+  then
+  --  EV6 ADDR has just been sent - trigger next steps or STOP
+  here S - constant EV6
+  [ I2C_SR1 1 ( ADDR ) ]B@IF [  --  EV6
+    $C6 c, I2C_SR1 ,         --  CLR ADDR by reading SR1
+    $C6 c, I2C_SR3 ,         --  followed by SR3
+    I2C_SR3 2 ]B@IF [        --  if transmitting
+      $C6 c, CCOUNT ,        --  LD   A,CCOUNT
+      $CA c, TCOUNT ,        --  TCOUNT OR
+      0= if                  --  JRNE rel
+        1 I2C_CR2 1 ]B!    --  dummy access (e.g. scan)
+      [ then
+    else  [
+      $C6 c, RCOUNT ,        --  LD   A,RCOUNT
+      $4A c,                 --  DEC  A
+      --  EV6_1 1-byte reception
+      0= if                  --  JRNE rel
+        0 I2C_CR2 2 ]B!    --  ACK disable
+        [ 1 I2C_CR2 1 ]B!    --  end read sequence
+      [ then
+    then
+    [ 1 I2C_ITR 2 ]B!  --  enable buffer interrupt
+  [ then
+  --  EV7 reveive bytes
+  here S - constant EV7
+  I2C_SR1 6 ( RXNE ) ]B@IF [
+    $C6 c, I2C_DR ,          --  LD   A,I2C_DR
+    $88 c,                   --  PUSH A
+    --  EV7_1 reveive 2nd to last byte, prepare stop
+    RCOUNT ]C@IF             --  like "?DUP IF" with TOS in A
+      [ 3 ]A<IF              --  2nd to last byte in DR, last in ShReg: set STOP
+        [ 0 I2C_CR2 2  ]B!   --  ACK disable
+        [ 1 I2C_CR2 1 ]B!    --  end read sequence
+      [ then
+      $725A , RCOUNT ,       --  DEC  RCOUNT
+      $51 c,                 --  EXGW X,Y
+      $CE c, RPOINT ,        --  LDW  X,RPOINT
+      $84 c,                 --  POP  A
+      $F7 c,                 --  LD   (X),A
+      $5C c,                 --  INCW X
+      $CF c, RPOINT ,        --  LDW  RPOINT,X
+      $51 c,                 --  EXGW X,Y
+    else                     --  discard bytes if receive counter is 0
+      $84 c,                 --  POP  A
+    then
+  then
+  --  EV8_1 and EV8 transmit 1st and following bytes
+  here S - constant EV81 
+  I2C_SR1 7 ( TXE ) ]B@IF
+    [ CCOUNT ]C@IF [       --  CCOUNT C@
+      $51 c,               --  EXGW X,Y
+      $CE c, CPOINT ,      --  LD X, CPOINT
+      $F6 c,               --  LD A,(X)
+      $C7 c, I2C_DR ,      --  LD I2C_DR,A
+      $5C c,               --  INCW X
+      $CF c, CPOINT ,      --  LDW CPOINT,X
+      $51 c,               --  EXGW X,Y
+      $725A , CCOUNT ,     --  DEC CCOUNT
+   else
+    TCOUNT ]C@IF [         --  TCOUNT C@
+      $51 c,               --  EXGW X,Y
+      $CE c, TPOINT ,      --  LDW X,TPOINT
+      $F6 c,               --  LD A,(X)
+      $C7 c, I2C_DR ,      --  LD I2C_DR,A
+      $5C c,               --  INCW X
+      $CF c, TPOINT ,      --  LDW TPOINT,X
+      $51 c,               --  EXGW X,Y
+      $725A , TCOUNT ,     --  DEC TCOUNT
+    else --  disable buffer interrupt after the last byte
+      [ 0 I2C_ITR 2 ]B!
+    [ then
+  then
+  then
+  here S - constant EV82 
+  --  EV8_2 end transmission or re-START reception through EV5
+  [ I2C_SR1 2 ( BTF ) ]B@IF
+    [ RCOUNT ]C@IF         --  RCOUNT C@
+      [ 1 I2C_CR2 2 ]B!    --  ACK enable
+      [ 1 I2C_CR2 0 ]B!    --  re-START for read sequence
+    [ else
+      1 I2C_CR2 1 ]B!    --  STOP clears TXE
+    [ then
+  then
+  --  check error events - flag error and abort transmission
+  here S - constant EF 
+  I2C_SR2 ]C@IF [
+      $4F c,                 --  CLR  A
+      $C7 c, I2C_ITR ,       --  LD   I2C_ITR,A ; disable all interrupts
+      $31 c, I2C_SR2 ,       --  EXG  A,I2C_SR2
+      $AA80 ,                --  OR   A,#$80
+      $C7 c, I2ISR , ]       --  LD   I2ISR,A   ; flag error
+      [ 1 I2C_CR2 1 ]B!      --  release the bus
+  [ then iret 
+-- ' I2C_int INT_I2C !flash
+
+.ifdef STM8L
+: I2I ( -- ) --  initialize peripheral - init values by @eelkhoorn
+  [ 1 CLK_PCKENR1 3 ]B!  --  enable SYSCLK to I2C, e.g. for stm8l051
+  [ 0 I2C1_CR1 0 ]B!     --  I2C peripheral disable
+  [ 0 I2C1_CR2 ]litC!
+  [ 1 I2C1_FREQR 4 ]B!   --  CPU freq 16 MHz
+  [ $8 I2C1_OARL ]litC!    --  own address 0x8
+  [ $40 I2C1_OARH ]litC!    --  7 bit address mode
+--    410kHz fast mode
+   [ $80 I2C1_CCRH ]litC!    --  I2C fast mode 
+   [ $F  I2C1_CCRL ]litC!    --  I2C freq 410kHz (table 91)
+--    100kHz normal mode
+--   [ 0 I2C1_CCRH 6 ]B!    -- duty cycle
+--   [ $50 I2C1_CCRL ]litC!    -- i2c freq 100 kHz, CCR = f.master/(2 f.i2c)
+  [ 6 I2C1_TRISER ]litC!     --  TRISER = (t_rise_max/t_clock) + 1 = 300 ns * f_master + 1 = 5.8
+  [ 1 I2C1_CR1 0 ]B!      --  Peripheral enable
+;
+.else
+: I2I ( -- ) --  initialize peripheral - init values by @eelkhoorn
+  [ 0 I2C_CR1 0 ]B!     --  I2C peripheral disable
+  [ 0 I2C_CR2 ]litC!
+  [ 1 I2C_FREQR 4 ]B!   --  CPU freq 16 MHz
+  [ $A0 I2C_OARL ]litC!    --  own address 0xA0
+  [ $40 I2C_OARH ]litC!    --  7 bit address mode
+--    410kHz fast mode
+   [ $80 I2C_CCRH ]litC!    --  I2C fast mode 
+   [ $D  I2C_CCRL ]litC!    --  I2C freq 410kHz (table 91)
+--    100kHz normal mode
+--   [ 0 I2C_CCRH 6 ]B!    -- duty cycle
+--   [ $50 I2C_CCRL ]litC!    -- i2c freq 100 kHz, CCR = f.master/(2 f.i2c)
+  [ $11 I2C_TRISER ]litC!     --  TRISER = CPU freq in MHz + 1
+  [ 1 I2C_CR1 0 ]B!     --  Peripheral enable
+;
+.then
+
+VARIABLE CREG 2 allotr 	--  command register, 4 bytes
+
+--  send n (1..4) bytes to slave a
+{ 0 .if }
+: snd ( bn .. b1 b0 n a -- )	--  b0 = 0 for commands, b0=$40 for data
+	>R DUP [ I2ISR 2 + ] literal C!
+	0 do CREG I + C! loop
+	CREG [ I2ISR 5 + ] literal !
+	R> I2S
+;
+{ .else }
+: snd ( bn .. b1 b0 n a -- )	--  b0 = 0 for commands, b0=$40 for data
+	>R DUP [ I2ISR 2 + ]FC!
+	0 do CREG I + C! loop
+	CREG [ I2ISR 5 + ]!
+	R> I2S
+;
+{ .then }
+
+ram
+
+__host
+-- flash interrupt verctor
+: fl-int
+   \t I2C_int   \m INT_I2C    !flash
+;
+__meta hex
+
+.then

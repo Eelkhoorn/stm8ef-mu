@@ -1,0 +1,160 @@
+loading OLED SSD1306 driver
+
+-- Driver for SSD1306 and SH1106 led displays 128x64 over i2c
+-- (538 bytes)
+
+-- ssdi ( --) initialise i2c and ssd1306-display
+-- cls ( --) clear screen
+-- dtxt ( adr --)	display text compiled with $"
+-- Text has to be compiled before it can be displayed.
+-- : txt $" text to be displayed" ;
+-- txt dtxt will display "text to be displayed" on the oled screen.
+-- d#	( n --) display number
+-- 1234 d#	will display "1234".
+
+-- The display has 8 pages (lines) of 128x8 dots. Positioning is done by sending display commands:
+-- snd (b b .. b0 n --)	send multiple (n) display commands, last byte b0 = 0 for positioning
+-- 																	  b0 = $40 for dots to display 
+
+-- Display positioning commands:
+-- $B0 - $B7	Vertical position: Line 0 - line7
+-- 0-$F	Horizontal position in steps of 1 dot
+-- $10 -$17	Horizontal position in steps of 16 dots
+-- $B2 $13 $5 0 4 $3c snd
+-- will position to third line ($B2), dot 53 ($13 = 3 x 16, $5 = 5, together 53).
+-- snd needs the number of display commands to be send, and the slave address.
+-- 53 2 PC will do the same. 
+
+-- API:
+--   * I2ISR array, acts as an ISR "register file"
+--     - byte 0: ER < 0 indicates error (bits 6:0 copied from I2C_SR2)
+--     - byte 1: SA slave address (0..127)
+--     - byte 2: CCOUNT number of command bytes
+--     - byte 3: TCOUNT number of bytes in write phase
+--     - byte 4: RCOUNT number of bytes in read phase
+--     - byte 5,6 : CPOINT command buffer pointer
+--     - addr 7,8 : TPOINT transmit buffer pointer
+--     - addr 9,10: Receive buffer pointer
+
+ld work/lib/DIA		-- array with display initialisation commands for SSD1306
+ld work/lib/FONT
+
+ld work/lib/I2ISR	-- i2c interrupt service routine
+
+$3c constant SSD  -- slave address
+
+flash
+__meta
+
+VARIABLE LBF 4 allotr	-- letter buffer, 6 bytes
+VARIABLE #count
+VARIABLE radixx
+
+-- position cursor
+: PC  ( column row -- )
+	$B0 + SWAP
+-- 	 6 * 2+
+	$10 /MOD
+	$10 +
+	0 4 SSD snd
+;
+
+-- send n bytes @ a to display buffer
+: sb ( a n -- )
+	TCOUNT C!
+	TPOINT !
+	$40 1 SSD snd
+; 
+
+-- send display command
+: dcmd ( c -- )
+	0 2 SSD snd
+;
+
+-- Translates ASCII to address of bitpatterns:
+: a>bp  ( c -- c-adr ) 
+-- 	#32 MAX #127 MIN
+	#32 - 5 * FONT +
+;
+
+-- Translate digit to address of bitpatterns:
+: d>bp ( n -- a)
+   DUP #10 < NOT if
+      7 +
+   then
+   #16 + 5 * FONT +
+;
+
+: disp ( a -- )
+   LBF 5 CMOVE LBF 6 sb
+;
+
+-- Display character:
+: drc  ( c --)
+   a>bp disp
+;
+
+-- display digit
+: d# ( n -- )
+	d>bp disp 
+;
+
+: n#h ( n -- di ... d0)
+   0 #count !
+   radixx @ >R 
+   R@ #10 = if DUP 0< if #45 drc NEGATE then then
+   begin 1 #count +! R@ /MOD $FFF AND DUP 0= until R> 2DROP
+;
+
+: ##### 4 for #35 drc next ;
+
+: n#
+   DUP $8000 = radixx @ #10 = AND if 
+   DROP #####  ; ] then
+   n#h
+   #count @ 0 do DUP #10 < if d# else $37 + drc then loop
+;
+
+-- spaces
+: spc  
+	 FONT 3 sb  
+;
+
+-- display n characters @ a, n<22
+: t# ( a n -- )
+	0 do DUP C@ DUP $20 = if
+	   DROP spc
+	else
+	drc  then 1+ loop DROP
+;
+
+-- clear page
+: cp
+	$5500 #128 sb
+;
+
+-- clear screen
+: cls
+	7 for1 0 i1 PC cp next1
+;
+
+-- Initialise display
+: SSDI  ( --)
+   I2I
+   DIA TPOINT ! #26 TCOUNT C!
+   0 1 SSD snd
+   #10 radixx !
+--    cls
+;
+__host
+meta
+: hx hex $10 \var radixx \t ! remote ;
+: decim decimal #10 \var radixx \t ! remote ;
+forth
+
+-- flash interrupt verctor
+: fl-int
+   \t I2C_int   \m INT_I2C    !flash
+;
+
+ram

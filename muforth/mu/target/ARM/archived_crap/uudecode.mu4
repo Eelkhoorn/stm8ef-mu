@@ -1,0 +1,54 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+( Since we have uuencode, we need decode as well. Esp since the Philips/NXP
+| LPC2000 parts can send back memory contents in uuencoded format.)
+
+
+( Decodes 4 chars of 6 bits - base64 - into 3 chars of 8 bits.)
+
+loading UUdecode
+
+: uu1decode   bl -  63 and ;  ( maps both space and ` to 0)
+
+( Each letter represents 2 bits; so aaaa is a byte.)
+: uupeel8  ( aaaa:bbbb:cccc - aaaa:bbbb:cccc aaaa:bbbb)  dup  8 u>> ;
+
+: 6b@   ( a n - a+1 n')  6 <<  push  c@+ swap  uu1decode  pop  + ;
+
+( high to low:  c0:c1:c2)
+: uu3  ( a - a+4)  0  6b@  6b@  6b@  6b@  ( aaa:abb:bbc:ccc)     uupeel8 uupeel8  uu, uu, uu, ;
+: uu2  ( a - a+3)  0  6b@  6b@  6b@       ( aaa:abb:bb0)  2 u>>  uupeel8          uu, uu, ;
+: uu1  ( a - a+2)  0  6b@  6b@            ( aaa:a00)      4 u>>                   uu, ;
+
+: uuleft   ( a 0|1|2 - a+)  jump  nope  uu1  uu2 ;
+: uudline  ( a)
+   c@+ swap  uu1decode ( count)
+   3 /mod ( m q)  swap push ( m)  ?for  uu3  next  then  pop uuleft  drop ;
+
+
+
+.ifdef uutest
+
+( test)
+chain .uu.
+
+.uu. definitions
+: begin  ram ( capture start addr)  \f -- ;  ( throw away line)
+: end    ram aligned  r !  ram over -    \f -- ;  ( throw away line)
+forth
+
+' nope
+-:  .uu. find  if execute ^ then  drop ( n)  uuline ;
+mode _uudec
+
+: uudec  _uudec  ld  \ [ ;
+
+: uuenc  token _string create-file
+  fd-out preserve  dup push writes  uu  pop close-file ;
+
+uudec muforth.uu
+uuenc muforth.uu.mu4
+
+.then

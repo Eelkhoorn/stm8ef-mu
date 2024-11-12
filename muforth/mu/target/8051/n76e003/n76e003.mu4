@@ -1,0 +1,37 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+
+loading 8081/n763003/n76e003.mu4 : Nuvoton N76E003 chip
+
+-d no-power-of-two-check
+-d big-endian
+2 constant bytes/cell
+
+ld target/common/memory.mu4
+
+16 make-aspace
+64 Ki make-image
+dup make-region flash
+dup make-region ram
+dup make-region xram
+    make-region bogus
+
+variable baudrate
+#38400 baudrate !
+
+18 Ki constant #flash
+ "80 constant /page    ( erase size of flash page)
+
+comment ===
+#flash /page -  ( last flash page)
+     constant @boot   ( start of serial bootloader)
+   0 constant @chat   ( our serial chat code)
+===
+
+ 256 constant #ram
+ 768 constant #xram
+   0 constant @ram
+   
+ld target/8051/n76e003/equates.mu4
+ld target/8051/build.mu4

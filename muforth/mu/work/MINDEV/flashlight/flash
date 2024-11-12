@@ -1,0 +1,92 @@
+--  Flashlight: 5 flashes of 50 ms (47.8 ms measured)
+
+loading work/MINDEV/flashlight/flash
+
+-d MINDEV 
+
+ld target/STM8/MINDEV.mu4
+ld aliases
+
+3 constant PIN		-- PD-pin for external interrupt
+variable INT_EXTI
+: choose
+   PIN 3 = if
+      \eq INT_EXTI3
+   else
+      \eq INT_EXTI4
+   then
+   INT_EXTI !
+;
+
+choose
+
+__meta
+flash
+
+: awu_int              --  interrupt handler
+   SAVEC
+   AWU_CSR1 C@ DROP
+   IRET
+; 
+
+: *10us  ( n -- )					--  delay
+   1- for 
+     [ $A62B ,  $4A  c,  $26FD ,  ] 
+   next
+;
+
+: *ms  ( n -- )						--  0.001 sec delay
+   0 do #103 *10us loop
+;
+
+VARIABLE QQ	--  on time
+VARIABLE PP	--  pause time
+VARIABLE NN	--  numper of flashes
+
+: fl ( -- ) [ 1 PC_ODR 3 ]B! [ QQ ]@ *ms [ 0 PC_ODR 3 ]B! ;
+
+: fls ( -- ) [ NN ]@ for1 fl  [ PP @ ] *ms next1 ;
+
+: TT
+	begin
+		fls [ $8f c, ]		( WFI)
+		[ AWU_TBR ]C@ 0=
+	until
+;
+
+: exti
+	SAVEC
+	[ 0 PD_CR2 PIN ]B! 300 *ms
+	[ 0 PC_ODR 3 ]B!
+	[ AWU_TBR ]C@ if
+		[ AWU_TBR ]CLR
+	else
+		[ $E AWU_TBR ]C!				  -- NOP LDW X,(8,SP)  LDW Y,'TT  LDW (X),Y
+	then
+	IRET
+; 
+
+-- boot_task
+: bt
+	[ 0 PD_DDR PIN ]B!			--  PD3 as input pull-up with interrupt
+	[ 1 PD_CR1 PIN ]B!
+	[ 1 PD_CR2 PIN ]B!
+	[ $30 QQ ]!
+	[ $50 PP ]!
+	[ 5 NN ]!
+	[ 1 PC_DDR 3 ]B!			--  PC3 as output puh/pull
+	[ 1 PC_CR1 3 ]B!
+	[ $E AWU_TBR ]C!  [ $3E AWU_APR ]C!	--  5.82 sec time base (5.88 sec measured)
+	[ $10 AWU_CSR1 ]C!
+	[ 0 TIM2_IER 0 ]B!
+ 	TT
+;  -- ' bt 'BOOT !flash
+
+__host
+forth
+-- flash interrupt verctors
+: fl-int
+   \t awu_int \m INT_AWU  !flash
+   \t exti   INT_EXTI @   !flash
+   \t bt     \m 'BOOT     !flash
+;

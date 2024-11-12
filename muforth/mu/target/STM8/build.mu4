@@ -1,0 +1,33 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading STM8/build.mu4 : STM8 build environment
+
+ld target/common/serial.mu4
+-- ld target/STM8/chains.mu4     ( metacompiler dictionary chains)
+-- ld target/common/memory-von-neumann-16.mu4
+ld target/common/endian.mu4
+
+ld target/STM8/asm.mu4
+-- ld target/STM8/dis.mu4
+
+ld target/STM8/meta.mu4       ( metacompiler, baby!)
+ld target/STM8/interact.mu4   ( interaction with target)
+
+$kernel.mu4 load-file         ( load the kernel words)
+ld target/STM8/flash.mu4
+
+-- load kernel binary in host image
+  $8000 $KERNEL.bin loadim
+
+ld target/STM8/chat-host.mu4
+
+( These settings will stick around if we're loaded with ld!)
+__meta
+hex
+ram
+-- update ram to reflect the loading of B@ and B! helper words on startup
+ld target/STM8/b@h.mu4
+
+

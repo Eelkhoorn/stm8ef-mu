@@ -1,0 +1,526 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+
+loading STM8/meta.mu4 : Meta-compiler (main)
+
+( Make it easy to check if a device register has been defined. If device
+  equates move to somewhere other than .equates. update this too.)
+compiler
+: .reg   .equates. \ .contains ;
+forth
+: .reg   \ .reg ;
+
+-- ------------------------------------------------------------------------
+-- Peephole optimiser tags
+-- ------------------------------------------------------------------------
+
+( Tags tell the meta-compiler what kind of special code, if any, was just
+  compiled. Currently used to identify literals and calls, for simple
+  peephole optimisations.
+
+  We store the tag byte at \m here. No tag is represented by an "empty"
+  image byte - 0ff - _not_ by a tag of zero.)
+
+( Tags used:)
+"ad constant $bsr    ( $ suggests price tag ;-)
+"cd constant $jsr   ( jsr ext)
+
+: tag!  ( tag)     \m here image-c! ;
+: tag@  ( - tag)   \m here image-c@ ;
+: notag  "ff tag! ;
+
+( We also want to cleanly uncompile code, so instead of simply backing up
+  and leaving the cruft - instructions and tags - behind, let's back up and
+  "uncompile" the code, leaving behind untagged code.)
+
+: uncompile  ( #bytes)
+   \m here  over -  dup \m goto image+  swap ( #bytes)  1+ ( include tag)  "ff fill ;
+meta
+:  ]   __target-colon  notag ;
+
+( These are pointers to target kernel words.)
+variable (dolit)
+variable (?branch)
+variable (XREG0)
+variable (DO)
+
+: compile,  ( target-cfa)  \m here swap  \a c ( compile call)  image-c@ tag! ;
+
+forth
+: d:          current preserve  definer   :  __definer-colon ;
+: replace  ( jsr-op jmp-op offset - -1)
+   \m here +a image-c!  drop  notag  -1 ;
+
+( If last code compiled was a call, rewrite it to a jump and return true;
+  else return false.)
+
+: tail?  ( - f)
+   tag@
+   dup $bsr  =  if ( bsr)      "20 ( bra)      -2 replace ^  then
+   dup $jsr  =  if ( jsr ext)  "cc ( jmp ext)  -3 replace ^  then
+   drop  0 ;
+
+target-compiler
+: ^   tail? if ^ then  "81 \m c, ( asm{  ret }) ;
+
+forth
+
+: [r]   ( mark as "runtime"; move last .target. word into .target-runtime.)
+   .target. @  dup @  ( last prev)  .target. !  ( unlink)
+   .target-runtime. @  ( last last-runtime)  over .target-runtime. !
+   swap ! ( link our new word to last-runtime) ;
+
+: [var]    ( move last .meta. word into .variables.)
+   .meta. @ dup  @ .meta. ! 
+   .variables. @ over .variables. !
+   swap !
+;
+
+( Look up a label or forward-reference variable, and execute it to push
+  its value or address.)
+forth
+: lookup
+   .meta. chain' execute ;
+
+: implements   \m here  lookup  ! ;
+
+( Compile a cfa into a target colon word.)
+
+( Fetch value of variable - a primitive - and complain if not yet defined.)
+: (p@)  ( var)  @  =if  ^  then  error" primitive not yet defined" ;
+
+( Fetch primitive and compile into target.)
+: (p,)  ( var)  (p@)  \m compile, ;
+
+compiler
+: p,   .meta. \chain  compile (p,) ;
+: p@   .meta. \chain  compile (p@) ;
+
+meta
+-- Fast words are compiled inline
+.ifdef TRAP
+: literal  "83 \m c, \m , ;
+.else
+.ifdef DOLIT
+: literal  p, (dolit) \m , ;
+.else
+-- DECW X  DECW X  LDW Y,#literal  LDW (X),Y
+: literal $5a5a  \m , $90ae  \m ,  \m , $ff \m c, ;
+.then .then
+
+: name    \m here  current preserve  target constant ;
+: :       \m name  __target-colon ;
+: '  .target. chain' execute ;  ( target words are constants!)
+: __host  \ [ ;  ( return to host forth mode)
+: {    \m __host ;  ( useful for bracketing a few  host forth words)
+
+forth
+: }    __meta ;  ( return to meta)
+variable depth[
+compiler
+: [[ __meta ;
+: \\ .meta. token' if compile, then ;
+
+target-compiler
+: [   depth depth[ ! __meta ;
+: a[ __asm ;
+: ;   \tc ^  \tc [ ;  ( return to meta)
+
+assembler
+: ] __target-colon  ;
+
+definer
+: ;                    \c ;  ( __meta) ;  ( do normal host ; , return to __meta)
+: ;d    compile \tc ;  \c ;  __meta ;  ( compile RET, do normal host ; , return to __meta)
+: ( \f ( ;
+: [ compile __meta ;
+: , compile \m , ;
+: c, compile \m c, ;
+: c! compile  image-c! ;
+: here compile \m here ;
+: d+ compile + ;
+: -- \f -- ;
+: \ .definer. token' if compile, then ;
+
+meta
+
+d: nop $9d c, ;
+-- ------------------------------------------------------------------------
+-- These words are no longer part of the kernel but compiled inline instead
+-- ------------------------------------------------------------------------
+
+d: DROP  $5C5C  , ;
+d: 2DROP $1c c, 4 , ;
+d: 3DROP $1c c, 6 , ;
+d: Y> $5a5a  , $ff  c, ;
+d: >Y $9093 , $5c5c , $90fe , ;
+
+-- LD A,(1,X)  PUSH A  LD A,(X)   PUSH A  INCW X  INCW X    6 cy
+d: >R
+   $E601  , $88 c, $F688  , $5C5C  ,  ;
+
+-- LD A,(1,X)  PUSH A  LD A,(X)   PUSH A    4 cy
+d: DUP>R
+   $E601  , $88 c, $F688  , ;
+
+-- POPW Y  DECW X  DECW X  LDW (X),Y
+d: R>
+   $9085  , $5a5a  , $ff  c,  ;
+   
+-- POP A  POP A
+d: R>DROP $8484 , ;
+
+-- POPW Y DECW X  DECW X  LDW (X),Y PUSHW Y
+d: R@
+   \ R>  $9089  ,  ; 
+-- fast "0" ;  DECW X  DECW X   CLRW Y   LDW (X),Y       5 cy (iso 18 for call to "0")
+d: 0   $5a5a , $905f , $ff c, ;
+-- fast 1+   LDW Y,X  LDW Y,(Y)  INCW Y  LDW (X),Y
+d: 1+  $9093 , $90fe , $905c , $ff c, ;
+-- fast 1-   LDW Y,X  LDW Y,(Y)  DECW Y  LDW (X),Y
+d: 1-  $9093 , $90fe , $905a , $ff c, ;
+-- fast 2*   LDW Y,X  LDW Y,(Y)  SLAW Y  LDW (X),Y
+d: 2*  $9093 , $90fe , $9058 , $ff c, ;
+-- fast 2/   LDW Y,X  LDW Y,(Y)  SRAW Y  LDW (X),Y
+d: 2/  $9093 , $90fe , $9057 , $ff c, ;
+-- fast 4*   LDW Y,X  LDW Y,(Y)  SLAW Y  SLAW Y  LDW (X),Y
+d: 4*  $9093 , $90fe , $9058 , $9058 , $ff c, ;
+-- fast 2+   LDW Y,X  LDW Y,(Y)  INCW Y  INCW Y  LDW (X),Y
+d: 2+  $9093 , $90fe , $905c , $905c , $ff c, ;
+-- fast 2-   LDW Y,X  LDW Y,(Y)  DECW Y  DECW Y  LDW (X),Y
+d: 2-  $9093 , $90fe , $905a , $905a , $ff c, ;
+-- fast NEGATE  LDW Y,X  LDW Y,(Y)  NEGW Y  LDW (X),Y
+d: FNEGATE  $9093 , $90fe , $9050 , $ff c, ;
+-- NOT  LDW Y,X  LDW Y,(Y)  CPLW Y  LDW (X),Y
+d: NOT  $9093 , $90fe , $9053 , $ff c, ;
+
+-- =====================================================================   
+-- fast NIP, inline
+-- LD A,(X)  LD (#2,X),A  LD A,(#1,X)  LD (3,X),A  INCW X  INCW X
+d: FNIP ( u1 u2 -- u2) $f6e7  , #2 c, $e601  , $e703  , $5c5c  , ;
+
+--  compile "@" inline
+d: F@
+--  LDW Y,X  LDW X,(X)  LDW X,(X)  EXGW X,Y  LDW (X),Y
+   $9093  , $fefe  , $51ff  ,  ;
+d: FC@         ( 9 bytes, 6 cy)
+--  LDW Y,X  LDW Y,(Y)  LD A,(Y)  CLR (X)  LD (1,X),A
+   $9093  , $90fe  , $90f6  , $7fe7  , $01 c, ;
+
+-- fast inline incrementing/decrementing ram registers
+d: DOX[   ( backup DSP, top > X)
+-- LDW Y,X   LDW X,(X) 
+   $9093 \m , $fe c, [ ;
+
+: ]+loop  ( c --)
+   $3f \m c, p@ (XREG0) \m c, $35 \m  c, \m c,  p@ (XREG0) 1+ \m , 
+   $9085  \m , $72b9  \m , p@ (XREG0) \m , $9089  \m , 
+   $90bf \m , p@ (XREG0) \m c,  $1603  \m , $72b2 \m ,  p@ (XREG0) \m , 
+   \a 0= \a until $9085 \m , $9085 \m , \m ] ;
+
+: ]DOX  ( restore DSP)
+-- EXGW X,Y   LDW (X),Y
+   $51FF \m , \m ] ;
+: ]INCW ( a)
+--     INC a+1 JRNE $1      INC a              $1:                      3 cycles 6 bytes
+   dup $3c \m c, \f 1+ \m c,  \a 0=  \a if $3c \m c, swap  \m c, \a then  \m ] ;
+: ]DECW ( a)
+--     DEC a+1            JRV $1           DEC A               $1:       3 cycles 6 bytes
+   dup $3a  \m c, \f 1+ \m c, \a v=1  \a if $3a  \m c, swap  \m c, \a then  \m ] ;
+: ]INC ( a) $3c  \m c,  \m c, \m ] ; --                                          1 cycle 2 bytes
+: ]DEC ( a) $3a  \m c,  \m c, \m ] ; --                                          1 cycle 2 bytes
+-- like "c A@ < IF" with relative addressing
+: ]A<IF ( c -- )
+	$A1 \m c, ( c ) \m c, \a <0 \a if \m ] ;	-- CP A,#c  JRPL rel ;
+
+: ]B@IF ( a b -- ) \f 2* $7201 +  \m ,  \m ,  \a if \m ] ;  -- BTJF  a,#bit,rel
+
+: ]@IF  ( a -- ) dup u8?  if  $90BE \m , \m c,  else  $90CE  \m ,  \m , then  \a !0= \a if \m ] ;
+
+: ]C@IF ( a -- ) dup u8? if $B6 \m c, \m c, else $C6 \m c,  \m , then \a !0= \a if \m ] ;
+
+-- wait until bit reset
+: ]BRU ( reg bit ) \f 2* $7200 +  \m ,  \m , \m here - 1 - \m c, \m ] ;
+
+-- wait until bit set
+: ]BSU ( reg bit ) \f 2* $7201 +  \m ,  \m , \m here - 1 - \m c, \m ] ;
+
+: ]B? ( c-addr bit -- f )
+  --  CLRW Y  BTJF a,#b,PC+2 DECW Y DECW X DECW X LDW X,Y
+      $905F  \m , \f 2* $7201 +  \m ,  \m , $0290  \m , $5A5A  \m , $5AFF  \m ,  \m ] ;
+
+: ]B! ( 1|0 addr bit -- )
+     rot 0= 1 and swap \f 2* $10  +  + $72  \m c,  \m c,  \m ,  \m ] ;
+
+: ]TB ( a bit# --)
+   \f 2* $9010  +  \m ,  \m , \m ] ; ( BCPL)
+
+-- Clear byte
+: ]CLR ( a --)
+   dup 8 u>> if     -- longmem?
+      $725F  \m ,  \m ,
+   else 
+      $3F  \m c,  \m c,
+   then 
+   \m ] ;
+
+-- clear word
+: ]CLRW
+   dup dup 8 u>> if      -- longmem?
+      $725F  \m ,  \m ,
+      $725F  \m , \f 1+  \m ,
+   else
+      $3F  \m c,  \m c,
+      $3F  \m c, \f 1+  \m c,
+   then
+   \m ] ;
+
+--  copy a1 to a2 using MOV, 2 cycles, 10 bytes
+: ]@! ( a1 a2 -- )
+     swap 2dup
+     $55  \m c,
+      \m ,  \m ,
+     $55  \m c,
+     1 1 v+
+      \m ,  \m ,  \m ] ;
+
+-- byte copy
+: ]C@C! ( a1 a2)
+   swap $55 \m c, \m , \m , \m ] ;
+
+-- get content of literal address
+: ]@ ( a)     ( 6 cycles/ 7 bytes iso 30 cycles/8 bytes with normal variable)
+-- DECW X  DECW X  LDW Y,short/long_mem   LDW (X),Y
+   dup $5a5a  \m , u8? if $90be \m , \m c, else $90ce \m , \m , then $ff \m c, \m ]
+;
+
+: ]C@ ( a)    ( 5 cycles, 6/7 bytes)
+-- DECW X   LD A,a  LD (X),A  DECW X  CLR (X)
+   $5a \m c, dup u8? if $b6 \m c, \m c, else $c6 \m c, \m , then $f75a \m , $7f \m c, \m ]
+;
+
+--  store 2-byte literal u in literal address using MOV
+: ]lit! ( u a -- )
+     $35 c,
+     over 8 u>> \m c, dup \m ,
+     $35 c,
+     swap $ff and \m c, \f 1+ \m , \m ] ;
+
+-- store (tos or literal) to literal address, MSB first
+: ]! ( a --)  ( 6 cycles/8 bytes )
+   depth 1- depth[ @ - if
+      \m ]lit! ^ then
+   dup u8?  if  
+--    dup LD A,(X) LD mem,A  INCW X  LD A,(X)  LD mem,A   INCW X 
+      dup $f6b7 \m , \m c, $5cf6 \m , $b7 \m c, \f 1+ \m c, $5c \m c,  else 
+--    LD A,(X) LDW mem,A  INCW X   LD A,(X) LDW mem,A  INCW X
+      dup $f6c7 \m , \m , $5c \m c,  $f6c7 \m , \f 1+ \m , $5c \m c,  then  \m ] ;
+
+: ]!! ( a )
+-- LDW (X),Y  LDW XREG0,Y  MOV XREG0,mem
+   $ff \m c, $90bf \m , p@ (XREG0) \m c, $55 \m c, \m , p@ (XREG0) \m , \m  ] ;
+
+--  store byte literal c in literal address using MOV
+: ]litC! ( c,a --)
+     $35 \m c, swap \m c, \m , \m ] ;
+
+-- store ( tos or literal) byte to literal address
+: ]C! ( a --)  ( 6 cycles/8 bytes )
+   depth 1- depth[ @ - if
+     \m ]litC! ^ then
+   dup u8?  if  
+--    INCW X  LD A,(X)  LD mem,A   INCW X 
+      $5cf6 \m , $b7 \m c,  \m c, $5c \m c,  else 
+--    INCW X   LD A,(X) LD mem,A  INCW X
+      $5c \m c,  $f6c7 \m ,  \m , $5c \m c,  then  \m ] ;
+
+: ]OR ( a b --)   ( OR bytes at addresses a and b, store result in a)
+-- LD A,b  OR A,a   LD a,A
+   $a6 \m c, dup  dup u8? if 
+   $ba \m c, $b7 \m c,  else dup
+   $ca \m c, \m , $c7 \m c, \m ,  then  \m ] ;
+
+
+-- + for byte sized literals. Caution: the result can't exceed $FF !
+: ]lit+ ( c --)
+	$E601 \m , $AB \m c, \m c, $E701 \m , \m ] ;
+
+-- -----------------------------------------------------------------------
+forth
+comment ===
+variable ram-pointer
+variable flash-pointer
+variable eeprom-pointer
+: ram ram-pointer @ h ! ;
+: flash flash-pointer @ h ! ;
+: eeprom eeprom-pointer @ h ! ;
+===
+: flash?
+    h preserve
+    h @ flash dp = ;
+
+meta
+: allotr  ( allot ram while in flash)
+--   flash? if ram \m allot flash else \m allot then ;
+   h preserve ram \m allot ;
+
+-- : +! ( u a) dup \m @ rot \f + swap \m ! ;
+
+: fill   ( a u c) dp preserve rot \m goto swap for dup \m c, next drop ;
+: fillw  ( a u w) dp preserve rot \m goto swap for dup \m  , next drop ;
+forth
+: comp? state @ @ comp = ;
+
+meta
+: VARIABLE
+   meta create
+     h preserve ram \m here  , 0 \m , 
+   [var]
+   does>
+      @ comp? if \m literal then  ;
+
+: CVAR  -- byte-variable
+   meta create
+     h preserve ram \m here  , 0 \m c,
+   [var]
+   does>
+      @ comp? if \m literal then  
+;
+
+: EVAR   -- variable in eeprom
+   meta create
+     h preserve eeprom \m here  , 0 \m , 
+   [var]
+   does>
+      @ comp? if \m literal then  ;
+
+: ECVAR  -- byte-variable in eeprom
+   meta create
+     h preserve eeprom \m here  , 0 \m c,
+   [var]
+   does>
+      @ comp? if \m literal then  
+;
+
+-- ------------------------------------------------------------------------
+-- Control structures.
+-- ------------------------------------------------------------------------
+
+( Resolve a forward or backward jump, from src to dest.)
+( When using absolute branch addresses, this is easy: just store dest at src.)
+
+: <resolve  ( dest src)  image-! notag ;
+: >resolve  ( src dest)  swap  \m <resolve ;
+: mark      ( - src)     \m here  "dead \m , ;
+
+target-compiler
+: [M \m here \tc [ ;
+: if    ( - src)   ( $cd \m c,)     p,  (?branch)  \m mark ;
+: then  ( src)          \m here \m >resolve  ;
+: else  ( src0 - src1)  ( p,   branch) $cc \m c,  \m mark  swap  \tc then ;
+: begin   ( - dest)  \m here ;
+: until   ( dest -)  \tc  if  \m <resolve ;
+: again   ( dest -)  ( p, branch) $cc \m c,  \m mark  \m <resolve ;
+: while   ( dest - src dest)  \tc  if  swap ;
+: repeat  ( src dest -)   \tc again  \tc then ;
+: for      ( - src dest)  \d >R \a begin  ;
+: next    ( dest -)
+--    POPW Y   DECW Y  PUSHW Y INCW Y \a 0= \a until POP A  POP A 
+   $9085 \m , $905a \m , $9089 \m , $905C \m , \a 0= \a until $8484 \m , ;
+
+-- for1/next1 creates own index register in ram, so loop in loop is allowed
+-- current ram address must be lower than $100
+: i1   dup  \m ]C@ ;
+: for1 
+   flash? not if $2001 \m , then
+   h @  ram \m here >r $9d \m c,  h !
+-- LD A,(1,X)  LD short_mem,A  INCW X  INCW X  ]DEC short_mem
+   $e601 \m , $b7 \m c, r@ \m c, $5c5c \m ,
+   \a never \a if \a begin swap r@ \m ]DEC \a then r> ;
+: next1
+-- TNZ short_mem
+   $3d \m c, \m c,  \a 0= \a until ;
+: afor1
+   flash? not if $2001 \m , then
+   h @  ram \m here >r $9d \m c, h !  
+-- LD A,(1,X)  INCW X  INCW X  INC A  LD short_mem,A  begin mem ]DEC !0= if swap r>
+   $e601 \m , $5c5c \m , $4cb7 \m , r@ \m c,
+   \a begin $3a \m c, r@ \m c, \a !0= \a if swap  r> ;
+: anext1
+-- TNZ short_mem
+    drop $cc \m c, \m ,  \a then  ;
+-- do1/loop1 creates own index/boundery registers in ram, so loop in loop is allowed
+: do1
+   flash? not if $2002 \m , then
+   h @  ram \m here $9d9d \m , swap h ! >r 
+   $e601 \m , $b7 \m c, r@ \m c, $5c5c \m , 
+   $e601 \m , $b7 \m c, r@ 1+ \m c, $5c5c \m , 
+   \a begin r> ;
+: loop1
+   >r r@ \m ]INC $b6 \m c, r@ 1+ \m c, $b0 \m c, r> \m c, \a 0= \a until ; 
+: 0do1
+   flash? not if $2002 \m , then
+   h @  ram \m here $9d9d \m , swap h ! >r 
+   $3f \m c, r@ \m c, 
+   $e601 \m , $b7 \m c, r@ 1+ \m c, $5c5c \m , 
+   \a begin r> ;
+
+: do
+ p, (DO) \a begin ;
+--   $9093 \m , $ee02 \m , $89 \m c, $93fe \m , $8993 \m , $5c5c \m , \a begin ;
+: loop  
+-- POPW Y  INCW Y  PUSHW Y LDW XREG0,Y  LDW Y,(3,SP)  SUBW Y,XREG0 \a 0= \a if \a until POPW Y POPW Y
+   $9085 \m , $905c \m , $9089 \m , $90bf \m , p@ (XREG0) \m c, $1603 \m , $72b2 \m , p@ (XREG0) \m ,
+     \a 0= \a until $9085 \m , $9085 \m ,  ;
+     
+: +loop 
+-- LDW Y,X  LDW Y,(Y)  INCW X  INCW X  LDW XREG0,Y  POPW Y  ADDW Y,XREG0  PUSHW Y  LDW XREG0,Y  LDW Y,(3,SP)  SUBW Y,XREG0 \a 0= \a if \a until POPW Y POPW Y
+   $9093  \m , $90fe  \m , $5c5c  \m , $90bf \m , p@ (XREG0) \m c, $9085  \m , $72b9  \m , p@ (XREG0) \m , $9089  \m , 
+   $90bf \m , p@ (XREG0) \m c,  $1603  \m , $72b2 \m ,  p@ (XREG0) \m , 
+   \a 0= \a until $9085 \m , $9085 \m , ;
+
+: I
+-- DECW X  DECW X  LDW Y,(1,SP)  LDW (X),Y
+   $5a5a \m , $1601 \m , $ff \m c, ;
+
+
+-- push literal on the stack
+: literal \m literal ;
+
+-- compile xt as a literal
+: [']        \m '  \m literal ;
+
+: , \m , ;
+
+target-compiler
+
+: \ .target-compiler. token' if , ^ then .target-runtime. find huh? literal ['] , , ;
+: \m .meta. \chain ;
+
+forth
+
+( Patch target colon compiler.)
+.meta. chain' literal   is target-literal
+             ' number   is target-number    ( use host's number)
+.meta. chain' compile,  is target-compile,
+
+: 2VARIABLE \m VARIABLE \f 2 \m allotr ;
+
+forth
+
+-- get address of last defined target word
+: '-last
+	.target. @ cell+ cell+ cell+ ;
+
+
+-- Create/does>
+meta
+: does> \m here dup '-last ! 2 - \m literal  ;   ( patch cfa of last created target word, put last compiled address on the stack)
+: create \m name ;
+
+-- example: __building d: 2CONSTANT create , , does> DUP @ SWAP 2- @ ;d
+-- 			AAAA BBBB 2CONSTANT PP
+
+forth

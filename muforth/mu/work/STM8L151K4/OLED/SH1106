@@ -1,0 +1,8 @@
+loading SH1106 OLED driver
+
+-d STM8L151K4 
+
+ld target/STM8/STM8L151K4.mu4
+ld aliases
+
+ld work/lib/SH1106

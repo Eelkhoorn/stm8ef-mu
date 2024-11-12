@@ -1,0 +1,128 @@
+--  515 bytes
+--  Real time clock modules DS1307 and DS3231, I2C communication
+--  DS3231 is much more accurate
+--  Both have 4kb eeprom, 128 pages of 32 bytes
+--  Registers 0:6  :  BCD data for sec, min, hour, #day(1:7), date, month, year(0:99)
+
+ld target/STM8/MINDEV.mu4
+ld aliases
+
+ld work/lib/I2ISR
+
+$68 constant RTC     --  slave address clock
+$57 constant EEPROM  --  eeprom slave address
+
+flash
+
+VARIABLE BFR $20 allotr
+VARIABLE radixx
+
+: RDC   --  Read clock
+   [ BFR RPOINT ]lit! [ 7 RCOUNT ]C!
+   0 1 RTC snd
+;
+
+--  Set clock reg's 6:0, BCD input
+: SETC  ( YY MM DD d hh mm ss)
+   [ BFR TPOINT ]lit! [ 7 TCOUNT ]C!
+   BFR 7 0 do1 DUP ROT SWAP C! 1+ loop1 DROP
+   0 1 RTC snd
+;
+
+: 2. 2 .R ;
+
+: ht
+	hex RDC
+	[ BFR 2 + ]C@ $3F AND 2. ."  : " [ BFR 1+ ]C@ 2.  ."  : " [ BFR ]C@ 2.
+;
+
+: time
+   [ radixx ]@ >R
+   ht
+   R> [ radixx ]!
+;
+
+--  time on OLED
+: >O 
+	[ ' drc ] literal 'EMIT !
+;
+: >TX
+	[ ' TX! ] literal 'EMIT !
+;
+: TM
+	>O
+   ht
+	>TX
+;
+
+: hd
+	RDC
+	hex [ BFR 4 + ]C@ 2. ."  / " [ BFR 5 + ]C@ 2.  ."  '" [ BFR 6 + ]C@ 2.
+;
+
+: date
+   [ radixx ]@ >R
+   hd
+   R> [ radixx ]!
+;
+
+: dt
+	>O
+	hd
+	>TX
+;
+--  EEPROM words, slave address $57
+
+--  write n bytes from buffer to EEPROM
+: eew ( #byte #page buf-adr n --)
+   [ TCOUNT ]C!
+   [ TPOINT ]!
+   2 EEPROM snd
+;
+
+--  load buffer with n bytes from eeprom
+: eer ( #byte #page buf-adr n --)
+	[ RCOUNT ]C!
+	[ RPOINT ]!
+	2 EEPROM snd
+;
+
+--  background task: clock on oled display
+: BGT
+	TIM 200 MOD 0= if		--  update every second 
+		30 3 PC				--  center cursor
+		TM
+	then
+;
+
+
+comment === 
+
+example
+
+--  set single clock register
+: SCRG  ( b reg-adr --)
+   rtc i2wb ( b reg-adr i2c-adr)
+;
+
+hex
+18 3 15 4 23 55 45 setc  --  march 15 2018 23:55:45
+date time
+5 11 scrg				 --  set clock reg. 5 (month) to 11
+
+Clock registers 0:6
+0 sec
+1 min
+2 hr
+3 #day (1-7)
+4 day
+5 month
+6 year (0-99)
+ 
+ Together with OLED:
+	: txt $" This text to display" ;	--  Compile text
+	0 8 ' txt 3 + DUP C@ eew			--  write compiled text in page 8 of eeprom
+	0 8 bfR 21 eer						--  read 20 bytes of page 8, start at 1ste position, from eeprom
+	bfR dtxt							--  display text on ssd1306
+
+===

@@ -1,0 +1,13 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading target/STM8/memory.mu4: STM8 memory image
+
+( Space for compiling into. Right now we define #addrbits to 16, which
+  means we are going to create a 64 KiB memory image.)
+
+-d big-endian
+-- -d unaligned-words
+ld target/common/memory-von-neumann-16.mu4
+

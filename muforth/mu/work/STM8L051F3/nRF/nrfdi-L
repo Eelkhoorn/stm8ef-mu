@@ -1,0 +1,138 @@
+--  Led connected to port C4
+--  pin _IRQ on nRF24L01 connected to port B2
+--  pin _CE on nRF24L01 connected to port B3
+
+__meta
+flash
+
+VARIABLE mbi  --  buffer index
+VARIABLE PTx?	--  Set role: 0 for remote device, 1 for console
+
+comment ===
+ld work/lib/TIB ( = constant $0350)
+ld work/lib/ACCEPT
+ld work/lib/EVALUATE
+ld work/lib/]B!
+===
+
+--  time out
+: Tt ( dt t0 t1 -- f)
+	- ABS <
+;
+
+--  Receive payload, dynamic width
+: PL.Rd ( a -- n ) --  stores n bytes in buff, n = actual payload width
+	rx>bd
+    BIT6 R.STATUS nRF!1  --   Write 1 to clear bit
+;
+
+: PL.T ( a n --)			--  transmit n bytes payload from a
+	b>tx  DROP	--  Send Loading tx buffer, drop status reply
+	[ $7204 , PB_IDR , $FB c, ]	--  wait for Pb2 IDR go low, TX_DS
+	clI [ 1 PB_CR2 2 ]B!	--  PB2 interrupt enable
+;
+
+: c>mb ( c --)	--  append c to mybuffer and transmit buffer if full
+	mbi DUP @ DUP ( c a I i) #32 < if
+		1 ROT +! mb + C!
+	else ( c a i)	--  buffer full
+		mb SWAP PL.T ( c a) --  transmit buffer
+		1 SWAP ! mb C!	--  set mbi to 1, store c at index 0
+	then
+;
+
+-- TIB is stripped out of the muforth kernel
+VARIABLE TIB
+80 allotr
+
+: txtib ( -- ; text)	--  transmit TIB, exit on empty input
+						--  usage: type message, <return>, wait for reply,
+						--  empty <return> to exit
+	clI fRX sTX CE.L 
+-- base @ hex
+-- 	CR ." : Tx to " R.TX_ADDR 5 nRF@n
+-- 	5 0 do . loop base !
+	begin
+-- 		cr ." #:"
+		sTX CE.L
+		TIB $20 ACCEPT  DUP if
+			[ 0 PB_CR2 2 ]B!	--  PB2 interrupt disable
+			PL.T sRX CE.H
+			3 TIM				--  set time out
+			begin
+				2DUP TIM TT		--  time out?
+				PB_IDR C@ NOT 4 AND	--  IRQ (PB2) low
+				OR
+			until 2DROP
+			0
+		else 
+			2DROP 1
+		then
+	until
+;
+
+--  interrupt service routine: receive message, evaluate, send reply
+: isr ( --)
+	SAVEC
+	PTx? @ if
+		begin
+			mb DUP PL.Rd
+			type
+			1 R.FIFO_STATUS nRF@1 AND
+		until clI 			--  reset RX_DR
+		else	--  PRx
+			mb DUP PL.Rd
+			0 mbi !
+			sTX CE.L
+			[ ' c>mb ] literal 'EMIT !	--  pipe output for serial to c>mb
+			EVALUATE
+			mb mbi @ DUP if PL.T else 2DROP then
+			[ ' TX! ] literal 'EMIT !	--  reset emit vector
+			sRx CE.H 				--  switch to listen mode, reset TX_DS
+	then [ 1 EXTI_SR1 2 ]B!			--  clear interrupt flag
+	IRET
+;
+
+: nRFi  ( ch pwr ar --)		--  init radi0: channel, power (0-3), air-rate (0-2)
+	sup					--  set up pins
+	CS.H 0 SPIon	
+	#10000 *10us		--  delay after power-on reset (spec fig. 3)
+	setair
+	$3F R.EN_RXADDR nRF!1		--  auto acknowledgement for all pipes
+	4 R.FEATURE nRF!1		--  Set EN_DPL (enable dynamic payload)
+	$3F R.DYNPD nRF!1		--  dynamic payload for all pipes
+	fRX fTX clI			--  flush registers, clear interrupts
+	$F 0 nRF!1				--  Power up as PRX
+;
+
+: IRQi ( -- )  		--   enable nRF24 IRQ interrupt of PB2
+	[ $9b c, ]			--  SIM, to enable EXTI_CRx setting
+	[ 1 EXTI_CR1 5 ]B!
+	[ $9A c, ]			--  RIM
+	flash
+	ULOCK
+	[ ' isr ] literal INT_EXTI2 !	--  set Port B int vector
+	LOCK
+	ram
+	[ 1 PB_CR2 2 ]B!	--  PB2 interrupt enable
+;
+
+: start  ( --)
+	2 0 0 nRFi IRQi
+;
+
+: rcv ( --)	--  start receiving
+	0 PTx? !
+	sRX CE.H ftx
+;
+
+: tmt ( --)	--  start transmitting
+	1 PTx? !
+	sTX CE.L
+	txtib
+;
+
+: boot start rcv ;
+
+ram
+

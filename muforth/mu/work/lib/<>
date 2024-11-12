@@ -1,0 +1,9 @@
+.ifndef (<>)
+
+-d (<>)
+
+__meta
+
+: <>  ( n1 n2 -- flag ) = NOT ;
+
+.then

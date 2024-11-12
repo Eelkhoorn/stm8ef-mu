@@ -1,0 +1,34 @@
+--  Manipulate memory: double and half
+.ifndef (]2*)
+
+-d (]2*)
+
+meta
+
+
+: ]2* ( a -- )
+-- PUSHW X  LDW X,longmem  SLLW X  LDW longmem,X  POPW X  
+	dup $89ce \m , \m , $58cf \m , \m , $85 \m c, \m ]
+;
+
+: ]2U/ ( a -- )
+-- PUSHW X  LDW X,longmem  SRLW X  LDW longmem,X  POPW X  
+	dup $89ce \m , \m , $54cf \m , \m , $85 \m c, \m ]
+;
+
+: ]2/ ( a -- )
+-- PUSHW X  LDW X,longmem  SRAW X  LDW longmem,X  POPW X  
+	dup $89ce \m , \m , $57cf \m , \m , $85 \m c, \m ]
+;
+
+comment ===
+
+VARIABLE WW
+-- Double the value in WW
+: WW2X [ WW ]2* ;
+
+-- Half the value in WW
+: WW2/ [ WW ]2/ ;
+===
+
+.then

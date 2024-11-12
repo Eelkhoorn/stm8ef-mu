@@ -1,0 +1,139 @@
+loading work/Nuvoton/DS1307
+
+comment ===
+RealTimeClock, 
+"Tiny RTC I2C Module" DS1307, EEPROM  address 0x50
+
+ZS-042 module  DS3231, EEPROM  address 0x57, RTC more accurate
+
+
+4kB EEPROM AT24c32
+
+===
+-- -d DS1307  ( default to DS3231M chip, uncomment in case of DS1307))
+
+__meta
+
+ld work/Nuvoton/I2ISR
+
+$68 constant RTC
+
+.ifdef DS1307
+$50 constant EEPROM
+.else
+$57 constant EEPROM
+.then
+
+VARIABLE E-BUFFER "1f allotr
+
+: I2S-RTC     RTC    a[ E-BUFFER # CMDPOINT mov ] I2S ;
+: I2S-EEPROM  EEPROM a[ E-BUFFER # CMDPOINT mov ] I2S ;
+
+: setc  ( YY MM DD d hh mm ss)  --  Set clock reg's 6:0, BCD input
+   0 E-BUFFER  8 0 do DUP ROT SWAP C! 1+ loop DROP
+   a[ 8 # CMDCOUNT mov 0 # TXCOUNT mov 0 # RXCOUNT mov ]
+   I2S-RTC
+;
+
+__host forth
+
+: set-clock ( day# --)     ( day#: 0-6, 0 = sunday)
+   >r datum> tijd>
+   YR 3 for dup @ swap "28 + next drop r>
+   HH 3 for dup @ swap "28 + next drop
+   \t I2I remote \t setc remote
+;
+
+__meta
+
+: time
+   E-BUFFER RXPOINT !I 
+   0 E-BUFFER C! a[ 1 # CMDCOUNT mov  0 # TXCOUNT mov 3 # RXCOUNT mov ]
+   I2S-RTC
+   [ E-BUFFER 2 + #] C@ $3F AND ( h. ."  : ") [ E-BUFFER 1+ #] C@ ( h. ."  : ") E-BUFFER C@ ( h.)
+;
+
+: date
+   E-BUFFER RXPOINT !I
+   4 E-BUFFER C! a[ 1 # CMDCOUNT mov  0 # TXCOUNT mov 3 # RXCOUNT mov ] I2S-RTC 
+   E-BUFFER  C@ ( h. ."  / ") [ E-BUFFER 1 + #] C@ ( h. ."  / '") [ E-BUFFER 2 + #] C@ ( h.)
+;
+
+-- nvram acces bytes 8 t0 "3f
+: DS! ( u a --)      ( byte DSxxxx_address_byte --)
+   E-BUFFER C! [ E-BUFFER 1+ #] C! a[ 2 # CMDCOUNT mov 0 # TXCOUNT mov 0 # RXCOUNT mov ] 
+   I2S-RTC
+;
+
+: DS@ ( a -- u)
+   E-BUFFER C! a[ 1 # CMDCOUNT mov 0 # TXCOUNT mov 1 # RXCOUNT mov ]
+   E-BUFFER RXPOINT !I
+   I2S-RTC
+   E-BUFFER C@
+;
+
+-- acces to eeprom 24c32
+: E! ( u a --)
+   E-BUFFER ! [ E-BUFFER 2 + #] ! 
+   a[ 4 # CMDCOUNT mov 0 # RXCOUNT mov ]
+   I2S-EEPROM
+;
+
+: E@ ( a -- u)
+   E-BUFFER ! a[ 2 # CMDCOUNT mov 2 # RXCOUNT mov ]
+   E-BUFFER RXPOINT !I
+   I2S-EEPROM E-BUFFER @
+;
+
+-- move 32 bytes from xram to EEPROM, eeprom-addr has to be page aligned
+: X!P ( a-xram a-eeprom --)
+   E-BUFFER ! a[ "22 # CMDCOUNT mov 0 # RXCOUNT mov ]
+   I2S-EEPROM
+;
+
+-- move 32 bytes from rom to EEPROM 
+: F!P ( a-rom a-eeprom --)
+   E-BUFFER ! TXPOINT !I
+   a[ 2 # CMDCOUNT mov 0 # RXCOUNT mov PSW .5 setb "20 # TXCOUNT mov ]
+   I2S-EEPROM
+;
+
+-- move 32 bytes from eeprom to xram
+: F@P ( a-eeprom a-xram --)
+   RXPOINT !I E-BUFFER !
+   a[ 2 # CMDCOUNT mov "20 # RXCOUNT mov 0 # TXCOUNT mov ]
+   I2S-EEPROM
+;
+
+.ifdef DS1307
+: -SQW 
+   7 DS@ a[ DPL "10 mclr ] 7 DS!
+;
+
+: +SQW
+   7 DS@ a[ "10 # DPL orl ] 7 DS!
+;
+
+: F-SQW ( n --)  ( 0 < n < 3; n=0:f=1Hz, 1<=n<=3:f=4.096*2^n)  
+   7 DS@ a[ DPL 3 mclr r0 inc @r0 a mov a DPL orl ] 7 DS!
+;
+
+.else
+: +SQW ( n --)
+   "e DS@ a[ "fb # DPL  anl ] "e DS!
+;
+
+: -SQW
+   "e DS@ a[ 4 # DPL orl ] "e DS!
+;
+
+: +32KHZ
+   "f DS@ a[ 8 # DPL  orl ] "f DS!
+;
+
+: -32KHZ
+   "f DS@ a[ DPL 8  mclr  ] "f DS!
+;
+.then
+
+hex

@@ -1,0 +1,271 @@
+loading nRF-L radio
+
+--  nRF24L01+ virtual console, dynamic payloads, enhanced shockburst
+--  todo: restart communication after "?" abort on PRX
+
+--  Led connected to port C4
+--  pin _IRQ on nRF24L01 connected to port B2
+--  pin _CE on nRF24L01 connected to port B3
+--  pin _CSN to port B4
+
+--  Load nrfd and nrfdi.
+--  On PRX:	start task, or set ' task to 'boot and restart.
+--  On PTX:	2 3 0 xinit (initialise radio with same settings as PRX)
+-- 			txtib
+
+-d STM8L051F3
+
+ld target/STM8/STM8L051F3.mu4
+ld target/STM8/nRF24L01.efr
+ld aliases
+__meta
+
+ld work/lib/]B!
+ld work/lib/]C!
+
+flash
+
+ld work/lib/SPI
+
+VARIABLE mb 31 allotr	--  my buffer
+
+
+--  timing **************************************************
+
+: sup  ( -- )			   --  setup pins clock gating
+	[ 1 PC_DDR 4 ]B!	   --  PC4 debug LED output
+	[ 1 PC_CR1 4 ]B!	   --  set up as push pull
+	[ $78 PB_DDR ]C!	   --  Port B setup nRF24L01 outputs
+	[ $78 PB_CR1 ]C!	   --  set up as push pull outputs
+	[ $78 PB_CR2 ]C!	   --  fast mode outputs
+	[ 1 CLK_PCKENR1 4 ]B!  --  enable SPI1
+;
+
+: LOn  [ 1 PC_ODR 4 ]B! ;	--  LED on
+: LOff [ 0 PC_ODR 4 ]B! ;	--  LED off
+
+: CE.L  ( -- )				--  CE low
+	[ 0 PB_ODR 3 ]B!
+;
+
+: CE.H  ( -- )				--  CE high
+	[ 1 PB_ODR 3 ]B!
+;
+
+: CS.L  ( -- )				--  CS low
+	[ 0 PB_ODR 4 ]B!
+;
+
+: CS.H  ( -- )				--  CS high
+	[ 1 PB_ODR 4 ]B!
+;
+
+: *10us  ( n -- )  --   delay n * 10us
+	1- for [
+		$A62B ,    --       LD    A,#42
+		$4A  c,    --  1$:  DEC   A
+		$26FD ,    --       JRNE  1$
+	] next
+;
+
+--  shift left n bits
+: sla  ( c n --- c)  DUP 0= if 
+    DROP else
+    0 do 2 * loop 
+  then
+;
+
+--  turn a bit position into a mask
+: bit ( u -- u )  1 SWAP sla ;
+
+--  talk to nRF24L01+ ***************************************
+
+: nSPI ( -- s)
+	CS.L SPI
+;
+
+: (nRF@!)  ( c1 -- )
+	nSPI DROP
+;
+
+: nRF@1  ( c1 -- c2 )  --  fetch the contents of register c1
+	(nRF@!) 0 SPI ( c2 )
+	CS.H
+;
+
+: nRF@n  ( a1 n --- cn....c1  )  --  read n bytes from nRF24 register a1
+	SWAP (nRF@!)
+	0 do $AA SPI loop
+	CS.H
+;
+
+: nRF!0s ( c1 -- s)  --  send command c1, return status
+	nSPI CS.H
+;
+
+: nRF!0  ( c1 -- )  --  send command c1
+	nRF!0s DROP
+;
+
+: nRF!1  ( c1 c2 -- )  --  write c1 to register c2
+	$20 OR (nRF@!) ( c1 ) SPI DROP
+	CS.H
+;
+
+--  lets setup nrf24L01+ how we want ************************
+
+: R@Cg  ( -- c1 )  --  fetch config reg
+	R.CONFIG  nRF@1
+;
+
+: R!Cg  ( c1 -- )  --  write C1 to config reg
+	R.CONFIG  nRF!1
+;
+
+--  Set bit in nRF reg.
+: nRF.SB ( reg n --)
+	bit SWAP DUP >R nRF@1 OR R> nRF!1
+;
+
+: fRX  ( -- )
+	FLUSH_RX nRF!0
+;
+
+: fTX  ( -- )
+	FLUSH_TX nRF!0
+;
+
+: clI  ( -- )				--  clear all interrupts
+	$70  R.STATUS nRF!1		--  0b01110000
+;
+
+: CE.HD  ( -- )				--  set CE high and pause
+	CE.H   1 *10us
+;
+
+: sRX  ( -- )			--  set as a receiver
+	R@Cg BIT0 OR  R!Cg fRX
+;
+
+: sTX  ( -- )			--   set as a transmitter
+	R@Cg BIT0 NOT AND R!Cg fTX
+;
+
+: b>nRF ( a n CMD -- s )	--  copy n chars from a to payload register on nRF24
+	CS.H nSPI ( a n -- s ) >R
+	0 do
+		DUP C@ SPI DROP 1+
+	loop CS.H
+	( a -- ) DROP R> ( -- s )
+;
+
+--  copy c bytes from buffer at a to TX payload and send, return STATUS
+: b>tx ( a c -- s )
+	W_TX_PAYLOAD b>nRF
+	CE.HD CE.L 
+;
+
+: rx>bd ( a -- n)	--  copy rx-fifo to buffer at a
+	R_RX_PL_WID (nRF@!) $AB SPI	SWAP OVER		--  get payload width
+	CS.H R_RX_PAYLOAD nSPI >R
+	0 do
+		-1 SPI OVER C! 1+
+	loop  CS.H DROP R> DROP
+;
+
+--  Get status byte
+: SB@ ( --)
+	NOP nRF!0s
+;
+
+: setair ( ch pwr ar --)	--  channel, power (0-3), air-rate (0-2)
+	DUP if 1- if 8 else 0 then 
+	else DROP $20
+	then SWAP
+	3 AND 1 sla OR R.RF_SETUP nRF!1
+	R.RF_CH nRF!1
+	$53 R.SETUP_RETR nRF!1	--  1 ms AutoRetransmitDelay
+;
+
+--  helper word for spa, set 5 byte pipe address
+: hspa 	( a1 a2 a3 a4 a5 p# --)
+		R.RX_ADDR_P0 + BIT5 OR (nRF@!)
+		5 0 do SPI DROP loop CS.H
+;	
+
+--  set address for pipe n
+--  Pipe 0 and 1: 5 byte address, the rest: one byte.
+--  address pipe 0 and tx-address should be the
+--  same for enhanced shockburst
+: spa ( msb...lsb n --)
+	DUP 2 < if
+		0= if 
+			5 0 do 4 PICK loop	--  dup address
+			0 hspa				--  set address pipe 0
+			6 hspa				--  set tx address
+		else
+			1 hspa
+		then
+	else
+		R.RX_ADDR_P0 + nRF!1
+	then
+;
+
+: nRFi  ( ch pwr ar --)		--  init radi0: channel, power (0-3), air-rate (0-2)
+	sup						--  set up pins
+	CS.H 0 SPIon	
+	#10000 *10us			--  delay after power-on reset (spec fig. 3)
+	setair
+	$3F R.EN_RXADDR nRF!1	--  auto acknowledgement for all pipes
+	4 R.FEATURE nRF!1		--  Set EN_DPL (enable dynamic payload)
+	$3F R.DYNPD nRF!1		--  dynamic payload for all pipes
+	fRX fTX -- clI			--  flush registers, clear interrupts
+ 	$F 0 nRF!1				--  Power up as PRX
+;
+
+--  store nRF24 registers in mb
+: *regs ( --)
+	mb $1F for DUP I nRF@1 SWAP C! 1+ next DROP
+;
+
+__host
+forth
+
+: regs_output 
+   cr ."       0    1"  cr --  header
+   0 $F do $F i - 2 .r i pad + $10 + c@ 5 .r i pad + c@ 5  .r cr -1 +loop ; 
+
+: regs \t *regs remote 100 ms  pad \var mb $20 t.read  regs_output ;
+
+
+
+-- ld work/STM8L051F3/nRF/nrfdi-L
+
+comment ===
+
+3 2 2 nRFi
+
+ initial settings:
+
+a 5 nRF@n . . . . . E7 E7 E7 E7 E7 ok
+b 5 nRF@n . . . . . C2 C2 C2 C2 C2 ok
+
+ regs
+      0    1
+ 0    F   E7
+ 1   3F    0
+ 2   3F    0
+ 3    3    0
+ 4    3    0
+ 5    2    0
+ 6   20    0
+ 7    E   11
+ 8    0    0
+ 9    0    0
+ A   E7    0
+ B   C2    0
+ C   C3   3F
+ D   C4    4
+ E   C5   68
+ F   C6    0 ok
+===

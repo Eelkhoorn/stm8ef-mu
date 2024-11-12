@@ -1,0 +1,45 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+loading STM8/STM8L051F3.mu4 : Definitions for STM8L051
+decimal
+
+-d big-endian
+2 constant bytes/cell
+#64 constant /page
+
+$" target/STM8/STM8L051F3.bin" $KERNEL.bin
+$" work/STM8L051F3/kernel.mu4" $kernel.mu4
+
+-- make sym link (system is defined in muforth/src/file.c)
+z" /usr/bin/[ -h /tmp/target.con ] && rm /tmp/target.con" system
+z" /usr/bin/ln -s /home/pi/build/muforth-latest/mu/target/STM8/STM8L051F3.con /tmp/target.con" system
+
+ld target/STM8/chains.mu4
+ld target/common/memory.mu4
+
+16 make-aspace
+64 Ki make-image
+dup make-region flash
+dup make-region ram
+dup make-region eeprom
+    make-region bogus
+
+( IMPORTANT: these values are hardcoded in forth.asm)
+"340 constant @flashbuf
+
+1  Ki constant ram-end
+"a000 1- constant flash-end
+
+variable baudrate
+#115200 baudrate !
+
+1 Ki  constant #ram
+8 Ki constant #flash
+$1000 constant @eeprom
+#256  constant #eeprom
+
+ld target/common/equates0.mu4
+ld target/STM8/STM8L051F3.efr
+ld target/STM8/build.mu4

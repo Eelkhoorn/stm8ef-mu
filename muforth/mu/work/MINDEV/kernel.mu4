@@ -1,0 +1,143 @@
+loading work/MINDEV/kernel.mu4
+
+hex
+
+
+21  constant @ram
+ram @ram dup dp 2!
+eeprom @eeprom dup dp 2!
+86a3 constant @flash
+flash @flash dup dp 2!
+
+__meta
+target-compiler
+
+821D goto  : ?branch ; [r]
+822A goto  : branch ; [r]
+864B goto  : rp! ; [r]
+865B goto  : DO ; [r]
+
+target
+
+806c goto  : RXA ;
+
+-- offset: 806c
+8075 goto  : TOB ;
+807c goto  : TOW ;
+8082 goto  : ATO ;
+8087 goto  : WTO ;
+808e goto  : SENDBYTES ;
+80a0 goto  : SETADDR ;
+80ac goto  : GETSP ;
+80b1 goto  : WRITEBS ;
+80cb goto  : SETSP ;
+80cf goto  : RUN ;
+80d7 goto  : FLASH ;
+80ea goto  : TABLE ;
+80f9 goto  : CHAT ;
+8115 goto  : COLD1 ;
+812f goto  : OUT! ;
+813b goto  : ADC! ;
+814c goto  : ADC@ ;
+8196 goto  : TIM ;
+819c goto  : RETURN ;
+819d goto  : COLD ;
+81ff goto  : ?RX ;
+820b goto  : TX! ;
+820e goto  : TXA! ;
+8217 goto  : ?KEY ;
+821a goto  : EMIT ;
+8230 goto  : EXECUTE ;
+8238 goto  : 2! ;
+8253 goto  : 2@ ;
+8269 goto  : 2C! ;
+8279 goto  : 2C@ ;
+8285 goto  : BF@ ;
+82a5 goto  : BF! ;
+82c1 goto  : B! ;
+82dc goto  : B@ ;
+82f0 goto  : @ ;
+82f7 goto  : ! ;
+8305 goto  : C@ ;
+830f goto  : C! ;
+831b goto  : OVER ;
+8324 goto  : NIP ;
+832b goto  : DROP ;
+832e goto  : DUP ;
+8336 goto  : SWAP ;
+8344 goto  : UM+ ;
+834b goto  : + ;
+8358 goto  : XOR ;
+8363 goto  : AND ;
+836e goto  : OR ;
+8379 goto  : 0< ;
+8382 goto  : - ;
+8396 goto  : A> ;
+839e goto  : A>KEY ;
+83ab goto  : ?DUP ;
+83b5 goto  : ROT ;
+83d4 goto  : 2DUP ;
+83d9 goto  : DNEGATE ;
+83f0 goto  : = ;
+8403 goto  : U< ;
+840f goto  : < ;
+8439 goto  : MAX ;
+8442 goto  : MIN ;
+8448 goto  : WITHIN ;
+845f goto  : UM/MOD ;
+8499 goto  : M/MOD ;
+84db goto  : /MOD ;
+84e6 goto  : MOD ;
+84eb goto  : / ;
+84f0 goto  : UM* ;
+853d goto  : * ;
+8542 goto  : M* ;
+8559 goto  : */MOD ;
+856a goto  : */ ;
+856f goto  : EXG ;
+8577 goto  : 2+ ;
+8581 goto  : NEGATE ;
+8589 goto  : ABS ;
+8593 goto  : 0= ;
+85a1 goto  : !0= ;
+85ad goto  : PICK ;
+85bf goto  : DEPTH ;
+85cb goto  : +! ;
+85de goto  : 2DROP ;
+85e2 goto  : +C! ;
+85f0 goto  : @EXECUTE ;
+85fd goto  : 21+ ;
+860c goto  : CMOVE ;
+8626 goto  : KEY ;
+8634 goto  : QUIT ;
+863d goto  : sp! ;
+863f goto  : sp@ ;
+8645 goto  : rp@ ;
+866f goto  : ULOCK ;
+867d goto  : LOCK ;
+8682 goto  : ULOCKF ;
+8690 goto  : LOCKF ;
+8695 goto  : SAVEC ;
+869f goto  : IRET ;
+
+86a3 goto
+
+meta
+
+00 constant USREMIT
+02 constant USRQKEY
+04 constant MP
+06 constant USRHLD
+08 constant XREG0
+09 constant XREG1
+0A constant XREG2
+0B constant XREG3
+0C constant BITAT
+16 constant BITSTO
+1B constant OUTPUTS
+1D constant BGADDR
+1F constant TICKCNT
+81f4 constant 'BOOT
+21 constant USERRAM
+
+ld work/words+.mu4

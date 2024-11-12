@@ -1,0 +1,143 @@
+--  I2C Register manipulation for RF synthesizer SI5351
+--  Calculations in SI5351B
+loading SI5351
+
+ld target/STM8/MINDEV.mu4
+flash \m cmd, constant CMD
+ld aliases
+
+ld work/lib/I2ISR
+ld work/lib/D:
+
+96 constant SI
+--  Temp. constants for I2ISR register access for user code
+I2ISR 2  + constant CCOUNT  --  char number of command bytes
+I2ISR 3 + constant TCOUNT  --  char number of bytes TX
+I2ISR 4 + constant RCOUNT  --  char number of bytes RX
+I2ISR 5 + constant CPOINT  --  points to command buffer 
+I2ISR 7 + constant TPOINT  --  points to TX buffer, starting with CMD/ADDR
+I2ISR 9 + constant RPOINT  --  points to RX buffr
+
+__meta
+
+-- MULTISYNTH REGS 10 kHz
+eeprom
+here constant MR
+1 , $A , 0 , 0 , 1 , $53a7 , $8000 , 0 ,
+flash
+
+--  regs for commands, received byte and to send byte
+VARIABLE COB 
+VARIABLE RXB
+VARIABLE TXB 
+
+--  helper
+: h1 ( n -- )
+	COB C!
+	COB CPOINT !
+;
+--  helper 2
+: h2 ( -- )
+	1 CCOUNT C! SI I2S
+;
+
+: @R ( n -- n )
+	h1
+	RXB RPOINT !
+	1 RCOUNT C!
+	h2
+	RXB C@ 
+;
+
+: !R ( b #reg -- )
+	h1
+	TXB C!
+	TXB TPOINT !
+	1 TCOUNT C!
+	h2
+;
+
+--  send 8 bytes from a to regs from #reg
+: !8 ( #reg a -- )
+	TPOINT !
+	h1
+	8 TCOUNT C!
+	h2
+;
+
+--  shift left n times, 1 x 2^n
+: SL ( n -- n )
+	1 SWAP
+	begin
+		DUP
+	while
+		1- SWAP 2* SWAP
+	repeat DROP
+;
+
+--  all clocks off
+: Soff
+	$FF 3 !R
+;
+
+--  clock n off
+: Coff ( n --)
+	SL 3 @R OR 3 !R
+;
+
+--  clock n on
+: Con ( n --)
+	DUP
+	#16 + $C SWAP  !R	--  MSx as input for clock n
+	SL NOT 3 @R AND
+	$AC #177 !R
+	3 !R
+;
+
+--  set Multisynt regs for clock b, MSA for clock 0 and 1, 
+--  								  MSB for clock 2
+: SM ( b -- )
+	DUP 2 / 8 *
+	#26 + MR !8
+	8 * #42 + MR 8 + !8
+;
+
+--  update and start clock b
+: UD ( b -- )
+	DUP DUP
+	Coff SM Con
+;
+
+: init
+	I2I
+	Soff
+	$80 #16 8 0 do
+		2DUP !R 1+
+	loop 2DROP
+	$92 #183 !R		--  crystal load capacitance 8 pF
+	$1C #18 !R		--  PLLB input for clock 2
+;
+
+ld work/MINDEV/SI5351/SI5351B
+
+comment ===
+
+--  display in HEX format
+: h. ( --)
+	BASE @ SWAP HEX 5 U.R BASE !
+;
+
+--  display in binary format
+: b. ( --)
+	BASE DUP @ >R 2 OVER ! SWAP 8 .R R> SWAP !
+;
+
+--  display in DECIMAL format
+: c. ( --)
+	BASE @ SWAP DECIMAL 6 .R BASE !
+;
+
+: TST
+	DO CR I DUP . @R H. LOOP
+;
+===

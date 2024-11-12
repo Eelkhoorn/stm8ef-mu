@@ -1,0 +1,87 @@
+loading STM8/asm.mu4 : STM8 assembler
+
+hex
+: c, \m c, ;
+
+: u8?  ( u - flag)  100 u< ;  ( if unsigned value fits in 8 bits)
+: s8?  ( n - flag)  80 + u8? ;  ( if signed value fits in 8 bits)
+
+: b,  c, ;
+: w,  \m , ;
+
+a0 constant imm
+b0 constant dir
+c0 constant ext
+d0 constant ix2  9ed0 constant sp2
+e0 constant ix1  9ee0 constant sp1
+f0 constant ix
+
+: ill   error" illegal addressing mode" ;
+
+( Convert column to index. Leftmost is leftmost valid column.)
+: col>  ( col leftmost - index)  -  dup 0< if ill then  4 u>>  0f and ;
+
+: op,  dup u8? if b, ^ then  w, ;  ( output op, including pre-byte)
+: ea,  ( n ea)  ( immed value or offset is underneath ea)
+   imm col>  jump
+   (  a0   b0   c0   d0   e0   f0
+     imm  dir  ext  ix2  ix1   ix)
+      b,   b,   w,   w,   b,  drop   ;
+
+: 2op  constant does> @  ( ea op)  or  dup op,  ea, ;
+
+assembler
+: )   ( a - a op)  dup u8? if dir ^ then  ext ;
+0c 2op jmp  ( no imm, no sp1 or sp2)  ( XXX check jmp & jsr for illegal ,s)
+0d 2op jsr  ( bsr is imm, no sp1 or sp2)
+
+forth
+: rel8?  ( dest - offset flag)
+   \m here 2 + ( just past 2 byte branch)  -  dup s8? ;
+
+: rel,  ( dest offset op)  b, b, drop ;
+
+defer debug-image-c!  ' image-c! is debug-image-c!
+
+assembler
+: j  ( dest)  ( compile a jump as efficiently as possible)
+   dup rel8? if   20 ( bra)  rel, ^  then  drop  ( \a ) ext \a jmp ;
+
+: c  ( dest)  ( compile a call as efficiently as possible)
+   dup rel8? if  0ad ( bsr)  rel, ^  then  drop  ( \a ) ext \a jsr ;
+
+: never  20 c, ;  -- JRA, JRT
+: always 21 c, ;  -- JRF
+: !0= 27 c, ;     -- JREQ
+: 0=  26 c, ;     -- JRNE
+: >=0 2B c, ;     -- JRMI
+: <0  2A c, ;     -- JRPL
+: <   2E c, ;     -- JRSGE
+: <=  2C c, ;     -- JRSGT
+: >   2D c, ;     -- JRSLE
+: >=  2F c, ;     -- JRSLT
+: u<  24 c, ;     -- JRUGE
+: u<= 22 c, ;     -- JRUGT
+: u>  23 c, ;     -- JRULE
+: u>= 25 c, ;     -- JRULT
+: v=1 28 c, ;     -- JRNV
+: v=0 29 c, ;     -- JRV, overflow
+
+: ret  81 c, ;
+: iret 80 c, ;
+
+( Jump offsets are relative to the *following* instruction.)
+( Resolve a relative jump from src to dest.)
+: resolve  ( src dest)
+   over -  dup s8? if  swap 1- debug-image-c! ^ then
+   error" relative jump out of range" ;
+( Control structure words.)
+: if      (      - src )  $9d c,  \m here ;  ( leave address of byte *following* offset)
+: then    ( src  -     )  \m here   \a resolve ;
+: else    ( src1 - src2)  \a never  \a if  swap  \a then ;
+
+: begin   ( - dest)       \m here ;
+: until   ( dest)         \a if  swap  \a resolve ;
+: again   ( dest)         \a never  \a until ;
+: while   ( dest - src dest)   \a if  swap ;
+: repeat  ( src dest)     \a again  \a then ;

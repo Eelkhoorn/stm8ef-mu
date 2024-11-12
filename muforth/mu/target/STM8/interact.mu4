@@ -1,0 +1,259 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+( Support common to all 908 and S08 interactions. Things like SWI stack
+  frames, reading and writing memory using "indexed" reads and writes.)
+
+
+loading STM8/interact.mu4 : Interaction (common)
+
+variable chatting
+variable chat-vector
+
+: chat-cmd   ( index - index+1)  dup cells  constant  1+
+             does> @  chat-vector @ =if  +  @ execute  ^  then  2drop  
+                error" Not connected to a chat-capable target" ;
+
+: chat-fail   error" Chat command not implemented" ;
+
+0  ( initial command index)
+chat-cmd t.hello    ( - chunk-size)
+chat-cmd t.get-sp   ( - sp)
+chat-cmd t.run      ( pc sp)
+chat-cmd t.set-sp    ( )
+chat-cmd t.read     ( buf a u)
+chat-cmd t.write    ( buf a u)
+chat-cmd t.flash-begin
+chat-cmd t.flash-end
+chat-cmd t.eeprom-begin
+chat-cmd t.eeprom-end
+chat-cmd t.erase    ( a)
+chat-cmd t.return
+chat-cmd t.program  ( buf a u)
+chat-cmd t.idle
+chat-cmd t.resync
+
+drop ( index)
+
+-:  ( buf addr len)  t.read ;
+: >chat  [ #]      is |read
+         ['] beh@  is |cell@
+                   16 |addr !  ( size of addr in bits)
+                    2 |cell !  ( size of cell in bytes) ;
+
+: >image   ['] read-host-image  ( read from memory image)      du-target ;
+
+
+( Reads from target if chatting, image otherwise.)
+: reader  ( target len - buf)
+   chatting @ if  pad -rot t.read  pad  ^  then
+   drop  image+ ;
+
+( Writes to image, and, if chatting, to target as well.)
+: writer  ( value target 'code len)
+   push ( len)  push  ( 'code)
+   2dup image+  r@ execute  ( store value into image)
+   chatting @ if
+      swap  ( target value)  pad pop execute ( store value into pad)
+      pad swap pop  ( pad target len)  t.write
+   ^ then
+   2pop 2drop 2drop ;
+
+meta
+-- : @   ( target - w)  2 reader  beh@ ;
+: c@  ( target - b)  1 reader    c@ ;
+-- : !  ( h target)  ['] beh!  2 writer ;
+: c!  ( b target)  ['] c!    1 writer ;
+forth
+
+variable tsp
+.ifdef STM8L151K4
+"7a0 constant sp0
+.else
+"3a0 constant sp0
+.then
+sp0 tsp !
+
+: get-regs  ( - sp)   t.get-sp  ( drop)  tsp ! ;
+
+( These are handy.)
+
+: ms       #1,000,000 * ( ns)  0 swap  nanosleep ;
+: us       #1,000 *            0 swap nanosleep ;
+
+: >b   send   ;
+: b>   recv   ;
+
+: >w      >hilo >b >b ;
+: w>   b> b> lohi> ;
+
+: 4#  # # # # ;
+: .bits8  binary  <#  4#  4#  #> type ;
+: .h16       hex  <#  4#  #> type ;
+
+: .b  ( a)  c@    .h8_ ;
+: .w  ( a)  beh@  .h16  space ;
+
+defer .regs
+: .SP  radix preserve
+   cr  ." SP: " tsp @ . ;
+
+now .SP is .regs
+
+variable /chunk
+comment ===
+variable ram-pointer
+variable flash-pointer
+variable eeprom-pointer
+: ram ram-pointer @ h ! ;
+: flash flash-pointer @ h ! ;
+: eeprom eeprom-pointer @ h ! ;
+===
+
+: copy-chunk  ( 'target len - 'target+len)
+   -- cr ." copy-chunk "  2dup swap u. u.
+   2dup + push  over image+  ( t.WriteChunk) -rot t.write  pop ;
+
+: copy-region  ( a len)
+   -- cr ." copy-region "  2dup swap u. u.
+   /chunk @ /mod ( r q)  swap push  for   /chunk @ copy-chunk  next
+                        pop  =if  ( rem) copy-chunk  drop ^  then  2drop ;
+
+variable ram-copied  ( pointer to first un-copied byte)
+
+: copy-ram
+   h preserve  ram
+   ram-copied @  dup 0= if  drop  region drop  then
+   \m here  over -  copy-region
+   \m here  ram-copied ! ;
+
+defer verify-quietly
+
+: hi   chatting on  >chat  t.hello  /chunk ! get-regs  .regs
+       ( ram-copied off)  copy-ram
+.ifndef noverify
+   h preserve  flash region  nip if  ( non-empty)  verify-quietly if  ( differs)
+      cr ." WARNING: Target's flash image differs from host's. Run flash-image?"
+   then  then
+.then
+       now __chatting is __meta  __meta ;
+
+: chat-via   pop  chat-vector !  hi ;
+
+: run      copy-ram  ( set-regs) tsp @ swap t.run  ;  ( don't wait for target)
+: runwait  run  get-regs ;   ( wait for target)
+
+: call  ( pc)  runwait .regs ;
+: kick  ( pc)   run ;  ( when the code you're calling doesn't speak
+                             the same protocol as running code)
+
+-- : 'reset   \eq Vreset image-@ ;
+-- : reset    'reset  call ;  ( MSP430 version has a delay between run and get-regs)
+-- : go       'reset  kick ;
+
+
+meta
+: check-stack  ( a) dup sp0 > if ." tried to pop empty target stack" drop $320 then ;
+: sp!  t.set-sp ;
+: sp@  t.get-sp ;
+: depth  sp0 tsp @ - \m cell / ;
+forth
+
+: stack<  ( "pop" stack from target)
+   \m depth  0 max 32 min  =if
+      >r
+      tsp @ dup image+  swap   r@ \m cells  t.read  ( read target stack)
+      r>
+      tsp @  over  ( n sp n)
+      for  dup image-@  pop 2push  \m cell+  next ( starting with top, push to R)
+      drop ( sp)
+      for  2pop push >16b next  ( pop from R to reverse order)
+      0
+   then  drop ;
+
+( stack> *first* builds a local image of the target stack - in the RAM
+  image - and *then* copies it, in one chunk, to the target.)
+
+: stack>  ( "push" stack to target)
+   flush drain
+   depth 0 max 12 min
+   ?if sp0 swap >r r@  \m cells -  dup dup t.set-sp tsp ! ( top of D stack)
+   r@ for  tuck image-!  \m cell+  next  ( copy each cell as a word to D stack)
+   drop
+   tsp @ dup image+  swap r> \m cells  t.write  ( copy stack image to target)
+   then ;
+
+: cont   >r stack> r> runwait  stack<  .regs ;
+-: ( cfa)  ( execute target word on stack)  ( pc!)  cont ;  is remote
+
+
+( Set |@ and |c@ to _some_ form of target fetch. Prefer to get bytes from
+  target if we're connected. This word is useful so we can set an initial
+  state for target's  du  and  dis  so that inspect won't crash when it
+  runs |@ to get a default ea.)
+
+: >target  chatting @ if  >chat ^  then  >image ;
+
+
+( Define our own key bindings for memory dumping and disassembly. We'll
+  default to host bindings if there isn't one in our array. This way we
+  only have to define the "delta" between host and target behaviours.)
+
+128 array hc08-seekeys
+
+( Default key action is to run host key code)
+host-seekeys hc08-seekeys  128 cells cmove
+
+( Support for dumping memory)
+: 1dump  ( a)
+   hex-bytes  ( set field width)
+   >image   dup .addr  dup .hex-bytes
+   chatting @ if
+      -valid
+      >chat   dup _addr  dup .hex-bytes
+      -valid
+   then
+   drop ( a) ;
+
+( So we can easily look at the signature embedded into the image.)
+: 1dump-chars  ( a)
+   hex-bytes
+   >target
+   dup _addr  dup .chars
+   dup .addr  dup .hex-bytes
+   drop ;
+
+hc08-seekeys  -1  du-mode dumping        >target  skip+  skip-  1dump        ( a - a')
+hc08-seekeys  -1  du-mode dumping-chars  >target  skip+  skip-  1dump-chars  ( a - a')
+-- hc08-seekeys  -1  du-mode disasming      >target  dis+   dis-   1dis         ( a - a')
+
+hc08-seekeys 'seekeys !    ( switch over to our bindings)
+
+key: d  ( a - a 0)   dumping        0 ;
+key: C  ( a - a 0)   dumping-chars  0 ;  ( small c is "call")
+-- key: i  ( a - a 0)   disasming      0 ;
+
+host-seekeys 'seekeys !  ( back to host bindings)
+
+
+( Interactive)
+( make an alias so we can still get to host's du)
+: _du  du ;
+
+( Sometimes, when chatting, we want to dump or disassemble something that
+  is in RAM. If we have just compiled it, and haven't yet run any code, the
+  host RAM and target RAM are out of sync; and because we show the contents
+  of the target RAM when chatting, we see garbage.
+
+  To improve this situation, let's copy-ram - if we're chatting and trying
+  to look at the ram - before doing a dis.)
+
+: ?sync-ram  ( a - a)
+   chatting @ if
+      h preserve  ram
+      dup  ram-copied @  \m here  within if  copy-ram  then
+   then ;
+
+: du  ( a - a')               dumping    inspect ;
+-- : dis  ( a - a')   ?sync-ram  disasming  inspect ;

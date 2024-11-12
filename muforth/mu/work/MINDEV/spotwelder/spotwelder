@@ -1,0 +1,110 @@
+--  Besturing van puntlas-relais, MINDEV board, TM1637 display
+--  TM1637 pin config:
+--             PC4 --> clock
+--             PC3 --> data
+
+--  opto-triac MOC3063 to sence zero-crossing, switch on top of Voltage wave.
+--  use port D3 as input-switch
+--  We are using an external interrupt that triggers the output
+--    and suspends triggering for a bounce-delay.
+--  ISR for both PD3 and TIM1 are in file spotwelder++.
+
+ld target/STM8/MINDEV.mu4
+flash \m cmd, constant CMD
+ld aliases
+
+flash
+__meta
+
+hex
+here constant SEGM
+3F06 , 5B4F , 666D , 7D07 ,
+7F6F , 777C , 395E , 7971 , 0 c,
+decimal
+
+VARIABLE DIGA  2 allotr
+
+: DH [ 1 PC_ODR 3 ]B! ;
+: DL [ 0 PC_ODR 3 ]B! ;
+: CH [ 1 PC_ODR 4 ]B! ;
+: CL [ 0 PC_ODR 4 ]B! ;
+
+: DY  --   delay 5 µs
+     2 2 2DUP 2DROP 2DROP
+;
+
+: START	
+	CH DH DY DL
+;
+
+: STOP
+	CL DY DL CH DY DY DH
+;
+
+--  bitbang, write byte
+: WB ( b -- )
+	8 0 do CL
+		DUP 1 AND if DH
+			else DL
+		then
+		DY 2/ CH DY
+-- 		2/ CH
+	loop DROP
+	CL DY CH DY CL
+;
+
+--  helper
+: h# ( a i -- )
+	START $44 WB STOP
+	START $C0 OR WB WB STOP
+;
+
+: ## ( i d -- )
+	SEGM + C@ SWAP h#
+;
+
+--  display dots
+: .#
+	[ 1 DIGA 2+ 7 ]B!
+;
+
+--  toggle dots
+: .#t
+	[ DIGA 2+ 7 ]TB
+	[ DIGA 2+ ] literal C@ 1 h#
+;
+
+VARIABLE radixx
+
+: D# ( f n -- )		--  display number, with or without dots (f)
+	radixx @
+	4 0 do
+		2DUP MOD SEGM + C@
+		DIGA I + C!
+		SWAP OVER / SWAP
+	loop 2DROP
+	if .# then
+	START $40 WB STOP
+	START $C0 WB
+	3 for I DIGA + C@ WB next
+	STOP
+;
+
+--  Valid brightness values: 0 - 8.
+--  0 = display off.
+: BR! ( n -- )
+	START
+	$87 + 
+	WB
+	STOP
+;
+
+: INIT
+	#10 radixx !
+	[ 1 PC_DDR 4 ]B!
+	[ 1 PC_CR2 4 ]B!
+	[ 1 PC_DDR 3 ]B!
+	[ 1 PC_CR2 3 ]B!
+	2 BR!
+;
+

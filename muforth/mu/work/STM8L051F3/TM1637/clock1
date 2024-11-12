@@ -1,0 +1,92 @@
+loading Time display on TM1637 4 digit 7segment led display
+
+forth
+
+-d DOLIT
+-d STM8L051F3
+
+ld target/STM8/STM8L051F3.mu4
+
+ld aliases
+
+__meta
+
+flash
+
+ld work/lib/TM1637L
+ld work/lib/]C!
+ld work/lib/JREQ
+
+--  Unlock RTC control registers
+: rtcu ( --)
+  [ $ca RTC_WPR ]C!
+  [ $53 RTC_WPR ]C!
+;
+
+--  Lock RTC control registers
+: rtcl ( --)
+  [ $FF RTC_WPR ]C!
+;
+
+--  initialise RTC
+: rtci ( --)
+  [ 1 CLK_PCKENR2 2 ]B!		--  rtc periferal clock gating
+  [ $10 CLK_CRTCR ]C!			--  LSE
+  rtcu
+  [ 1 RTC_ISR1 7 ]B!			--  Initialization mode.
+  [M RTC_ISR1 6 ]BSU			--  poll INITF
+  [ $7F RTC_APRER ]C!			--  set PREDIV_A to 127
+  [ 0 RTC_SPRERH ]C!			--  set PREDIV_S to 255
+  [ $FF RTC_SPRERL ]C!
+  [ 0 RTC_ISR1 7 ]B!
+  rtcl
+;
+
+--  Set calender registers, BCD input
+: stcr ( yy mm dd hh mm ss )
+  rtcu
+  1 RTC_ISR1 7 B!
+  begin RTC_ISR1 C@ $40 AND until
+  RTC_TR1 C!
+  RTC_TR2 C!
+  RTC_TR3 C!
+  RTC_DR1 C!
+  RTC_DR2 C!
+  RTC_DR3 C!
+  0 RTC_ISR1 7 B!
+  rtcl
+;
+
+: init
+	INIT
+	rtci
+	$10 radixx !
+;
+
+comment ===
+
+: qq c@ . ;
+: ss RTC_TR1 QQ RTC_DR3 C@ DROP ;
+
+===
+ram
+-- display time on TM1637
+: time# ( f)
+   >R RTC_TR2 >R R@ C@ R@ 1+ C@ R> 5 + C@ DROP
+   $100 * + R> SWAP D#
+;
+
+--  display no dots
+: .0#
+	[ 0 DIGA 2+ 7 ]B!
+	[ DIGA 2+ ] literal C@ 1 h#
+;
+
+: bgt TIM #200 MOD 0= if time# TIM #400 MOD 0= if .0# then then ;
+
+__host
+: set-clock ( --)
+	datum> tijd>
+	YR @ MN @ DY @ HH @ MM @ SS @
+	\t stcr remote 
+;

@@ -1,0 +1,102 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+loading EFM8 serial bootloader
+
+ld lib/crc16.mu4
+
+hex
+
+( Usual comm basics.)
+: >b  send ;
+: b>  recv ;
+
+: >w  >lohi  >b >b ;  ( big-endian)
+
+
+( The command format is very simple:
+|
+| $ <len> <cmd> ...
+|
+| len is the byte count of everything following the '$'. Multibyte values
+| are sent big-endian: high bytes first.)
+
+( Commands: [all values are in hex]
+|
+| Cmd       Data...                          Returns    Explanation
+| ========  ==============================   ========   ===================================
+| Identify  30  id0 id1                       40, 42    Query if the part id matches
+| Setup     31  a5 f1 00                      40        Setup flash keys and bank#
+| Erase     32  <addr> <data, 0-128 bytes>    40, 41    Erase and optionally write to flash
+| Write     33  <addr> <data, 1-128 bytes>    40, 41    Write to flash
+| Verify    34  <addr1> <addr2> <crc>         40, 43    Compute CRC16 from addr1 to addr2 [inclusive]
+| Lock      35  <sig> <lock>                            Lock the flash; we are going to ignore this
+| Run       36  00 00                         40        Reset and start executing from flash vector
+|
+| Return values are:
+| 40  ACK - Everything Ok
+| 41  Range error
+| 42  Bad id error
+| 43  CRC error
+)
+
+: ?ack  b> dup 40 = if drop ^ then
+           dup 41 = if drop error" Range error" then
+           dup 42 = if drop error" Bad chip id" then
+               43 = if      error" CRC mismatch" then ;
+
+: >buf  ( buf u)        for  c@+ swap >b  next drop ;
+: crc   ( buf u - crc)  0000 -rot  crc16-buf ;
+
+( #bytes is the count of bytes in the *payload*. We add 1 to include the
+| command byte in the total length.)
+
+: >cmd  ( cmd #bytes)  ?spkt  char $ >b  1+ >b ( len)  >b ( cmd) ;
+: <flash>  ( buf a u cmd)   over 2 + >cmd  swap >w ( addr)  >buf  ?ack ;
+
+: b.erase+write  ( buf a u)   32  <flash> ;
+: b.write        ( buf a u)   33  <flash> ;
+
+: b.identify  ( chip)    30  2  >cmd  >w                                ?ack ;
+: b.setup                31  3  >cmd  a5f1 >w ( keys)  00 >b ( bank)    ?ack ;
+: b.verify   ( buf a u)  34  6  >cmd  over >w ( addr1)  tuck + 1- >w ( addr2)
+                                                                crc >w  ?ack ;
+: b.run                  36  2  >cmd  0 >w                              ?ack ;
+
+( This is really just for testing - initially with an EFM8BB1LCK board.)
+: b.hello
+   #115200 bps  drain  flush
+   ff >b  ( send autobaud training byte)
+   3001 ( device and derivative id for EFM8BB10F8G_QSOP24) b.identify
+   b.setup  ( send flash keys to device) ;
+
+: chunk  ( 'target len - 'target+len)
+   cr over u.  dup u.
+   2dup + push  over image+ -rot  ( buf a u)
+   over erase? if  ." erase+write"  b.erase+write  pop ^  then
+                   ." write"        b.write        pop ;
+
+: blast-region  ( a len)
+   80 /mod ( r q)  swap push  for  80 chunk  next
+                     pop  =if  ( rem) chunk  drop ^  then  2drop ;
+
+: blast
+   h preserve  b.hello  flash region  2dup blast-region
+   over image+ -rot  b.verify ;
+
+
+.ifdef testing
+
+: erase-reset-vector
+   pad 0000 0 b.erase+write  ( erase first 512 bytes, write 0 bytes) ;
+
+: test-crc
+   ( Create a buffer containing: 00 01 02 .. 7f.)
+   pad  80 0 do  i swap c!+  loop  drop
+   ( Erase page at 0200 and program buffer to device at address 0200.)
+   pad  0200 80 b.erase+write
+   ( Verify.)
+   pad  0200 80 b.verify ;
+
+.then  ( testing)

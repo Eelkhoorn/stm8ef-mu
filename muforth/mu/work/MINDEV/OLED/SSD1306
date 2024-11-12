@@ -1,0 +1,10 @@
+loading OLED driver SSD1306 
+
+
+-d MINDEV
+
+ld target/STM8/MINDEV.mu4
+
+ld aliases
+
+ld work/lib/SSD1306

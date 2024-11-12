@@ -1,0 +1,14 @@
+loading work/lib/D+!
+.ifndef (D+!)
+
+-d (D+!)
+
+ld work/lib/D+
+
+__meta
+
+: D+! ( d a -- )
+	DUP>R 2@ D+ R> 2!
+;
+
+.then

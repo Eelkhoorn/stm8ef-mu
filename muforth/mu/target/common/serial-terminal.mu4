@@ -1,0 +1,82 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+( Simple terminal that talks to serial port.)
+
+( Make it easier to load this file! It will load the serial code if
+| necessary.)
+.ifndef target-tty
+   ld target/common/serial.mu4
+.then
+
+256 buffer termbuf
+
+( If any chars have come in from the serial port, print them.)
+: serial->screen
+   target-tty termbuf 256 read  ?if  termbuf swap type  then ;
+
+: key?  ( - char 1 | 0)
+   tty charbuf 1 read  =if  charbuf c@ swap  then ;
+
+( While waiting for the user to press a key, keep streaming any serial
+| input to the screen.)
+
+( This slows down the keyboard/terminal polling loop. Without slow-spin te
+| uses 100% of a cpu while running! With it, usage goes down to more like
+| 1%. And responsiveness is still fine. ;-)
+
+: slow-spin  0 5,000,000 nanosleep  ( 5 ms delay) ;
+
+: te-key  ( - char)
+   begin  serial->screen  key? 0= while  slow-spin  repeat ;
+
+
+( Handle "meta" keys.)
+( no-op; don't exit)  ' 0  96 defarray+ term-esc-keys
+: esc:  -:  \f char  32 -  term-esc-keys ! ;
+
+( Special keys.)
+esc: q  ( quit)  -1 ;
+
+: te-process-key  ( - exit?)
+   te-key
+   dup #ESC = if  drop  te-key 32 - term-esc-keys @execute ^  then
+   dup #DEL = if  drop  #BS  then  ( send backspace instead of Del)
+   ( default: send to target)  _send  0 ;
+
+( The main loop.)
+' set-termios-polling    user-termios user-polling
+' set-termios-polling  target-termios target-polling
+
+: te  ( terminal)
+   user-polling  target-polling
+   begin  te-process-key  until
+   user-raw  target-raw ;
+
+
+.ifdef fancy-terminal-escapes
+
+( Echo ESC [ back to serial port, followed by the rest of the chars in the
+| keyboard buffer. This makes AEB-1 autobauding - which works by sending
+| `ESC [5n' - status query - and the Linux console answers with `ESC [0n' -
+| terminal Ok. By echoing the ESC and [ that were eaten by our ESC-dispatch
+| mechanism, we cause the AEB-1 autobaud feature to magically work.
+|
+| This only sort of "works". While the Linux console obliges - as do rxvt
+| and xterm - the FreeBSD syscons driver does _not_. [I have no idea what
+| the NetBSD wscons driver will do.] So rather than be at the mercy of an
+| environment that we cannot control, we handle this ourselves, right
+| here.)
+
+: CSI  ( handle ESC [ )
+  #ESC emit  char [ emit
+  key dup char 5 = if
+    key dup char n = if  ( got ESC [5n, so answer accordingly)
+      nip  char 0
+    then swap emit
+  then emit ;
+
+esc: [  ( vt10x)  CSI  0 ;
+
+.then  ( def fancy-terminal-escapes)

@@ -1,0 +1,78 @@
+.ifndef (D/)
+
+-d (D/)
+--  unsigned divide of two double numbers
+
+flash
+
+ld work/lib/D-
+ld work/lib/D+
+ld work/lib/D<
+ld work/lib/D*
+-- ld work/lib/BF@
+-- ld work/lib/BF!
+ld work/lib/D2*
+
+__meta
+flash hex
+
+VARIABLE $DEN$ 2 allotr
+VARIABLE $Q$ 2 allotr
+VARIABLE $N$ 2 allotr
+VARIABLE $R$ 2 allotr
+
+
+--  bitlength -1 of double @ a
+: bl ( a -- u )
+	#32 begin
+		1- 2DUP BF@
+	until NIP
+;
+
+--  left shift arithmitical on double
+: 2*! ( a -- )
+	DUP 2@  D2* ROT 2!
+;
+
+--  helper for D/
+: hd/ $R$ 2@ $DEN$ 2@ ;
+
+--  unsigned divide on doubles,
+--   return doubles for remainder and quotient
+: D/ ( d1 d2  -- r q )
+	
+	0 DUP 2DUP $Q$ 2! $R$ 2!
+	$DEN$ 2! 
+	2DUP 0= SWAP 0= AND if
+		2DUP
+	else
+		$N$ 2!
+		$N$ bl for1 $R$ 2*!
+			$N$ i1 BF@ $R$ 0 BF!
+			hd/ D< NOT if [ swap ]
+				hd/ D- $R$ 2!
+				1 $Q$ i1 [ swap ] BF!
+			then
+		next1
+ 		$R$ 2@ $Q$ 2@
+	then
+;
+
+.then
+
+comment ===
+
+--  https://en.wikipedia.org/wiki/Division_algorithm
+N/D = (Q,R)
+if D = 0 then error(DivisionByZeroException) end
+Q := 0                  -- Initialize quotient and remainder to zero
+R := 0                     
+for i := n − 1 .. 0 do  -- Where n is number of bits in N
+  R := R << 1           -- Left-shift R by 1 bit
+  R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
+  if R ≥ D then
+    R := R − D
+    Q(i) := 1
+  end
+end
+===

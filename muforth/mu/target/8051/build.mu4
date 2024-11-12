@@ -1,0 +1,34 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+loading 8051/build.mu4 : build environment
+
+ld target/common/serial.mu4      ( needed for chat and serial bootloader)
+ld lib/host-prompt.mu4           ( helpful prompt when in host mode)
+
+( If we are loading build.mu4 without having loaded a device-specific
+| equates file, load a basic equates file containing the original 8051
+| SFRs.)
+
+.ifndef .equates.
+   ld target/8051/core-equates.mu4
+.then
+
+ld target/8051/chains.mu4        ( common metacompiler chains and token consumers)
+-- ld target/8051/memory.mu4        ( basic target memory management)
+ld target/8051/asm.mu4           ( assembler)
+ld target/8051/disasm.mu4        ( disassembler)
+-- ld target/8051/compiler.mu4      ( target compiler, baby!)
+ld target/8051/interact.mu4      ( interaction with target)
+ld target/8051/intel-hex.mu4     ( reading and writing hex files)
+ld target/8051/meta.mu4
+ld target/8051/flash.mu4         ( settings for flashing/verifying)
+ld target/common/flash.mu4       ( programming the flash)
+ld target/8051/n76e003/kernel.mu4
+ld target/8051/chat-host.mu4     ( talking to the chat code)
+
+( These settings will stick around if we're loaded with ld!)
+__meta
+hex
+flash

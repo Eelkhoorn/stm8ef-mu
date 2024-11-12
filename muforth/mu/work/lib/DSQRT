@@ -1,0 +1,38 @@
+.ifndef (DSQRT)
+
+-d (DSQRT)
+
+__meta
+
+-- (unsigned) double square root            (C) RigTig 2017
+-- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
+
+ld work/lib/D>
+
+: DSQRT ( d -- n )
+  $8000 ( d c ) $8000 ( d c g )
+  begin
+    DUP DUP UM* ( d c g g^2)
+    5 PICK 5 PICK ( d c g g^2 d )
+    D> if ( d c g )
+      OVER XOR
+    then ( d c g )
+    SWAP 2/ $7FFF AND ( d g c )
+    DUP 0= if
+      DROP ROT ROT 2DROP -1 ( g true )
+    else
+      SWAP OVER ( d c g c ) OR 0
+    then
+  until
+;
+
+
+comment ===
+ Example:
+
+0 16 DSQRT .S    -- 1024 <sp ok
+0 1 DSQRT .S     -- 256 <sp  ok
+16 0 DSQRT .S    -- 4 <sp  ok
+===
+
+.then

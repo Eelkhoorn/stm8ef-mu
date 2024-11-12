@@ -1,0 +1,24 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+( Testing of catch and throw, esp in the presence of R stack frames.)
+
+variable res
+: e   res @  throw ;
+: d   radix preserve octal  catch e  =if  ." d "  dup .  throw  then ;
+: c   radix preserve binary   3 room  d ;
+: b   radix preserve decimal  2 room  c ;
+: a   radix preserve hex  catch b  =if  ." a "  .  then ;
+
+e d c b a
+
+-24 res !
+
+( Now, by hand try
+| e
+| d
+| c
+| b
+| a
+)

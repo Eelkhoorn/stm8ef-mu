@@ -1,0 +1,178 @@
+loading work/Nuvoton/SH1106 oled driver
+
+comment ===
+Driver for SH1106 oled displays 128x64 over i2c
+(630 bytes excl font)
+
+ssdi ( --) initialise i2c and ssd1306-display
+cls ( --) clear screen
+dtxt ( adr --)	display text compiled with $"
+Text has to be compiled before it can be displayed.
+$" text to be displayed" constant txt
+txt tt# will display "text to be displayed" on the oled screen.
+n#	( n --) display number
+1234 d#	will display "1234".
+
+The display has 8 pages (lines) of 128x8 dots. Positioning is done by sending display commands:
+snd (b b .. b0 n --)	send multiple (n) display commands, last byte b0 = 0 for positioning
+																	  b0 = $40 for dots to display 
+
+Display positioning commands:
+$B0 - $B7	Vertical position: Line 0 - line7
+0-$F	Horizontal position in steps of 1 dot
+$10 -$17	Horizontal position in steps of 16 dots
+$B2 $13 $5 0 4 $3c snd
+will position to third line ($B2), dot 53 ($13 = 3 x 16, $5 = 5, together 53).
+snd needs the number of display commands to be send, and the slave address.
+53 2 pc will do the same. 
+
+
+"a  constant SLA_ADDR    ( slave address sll)
+"b  constant CMDCOUNT    ( number of command bytes to transmit)
+"c  constant TXCOUNT     ( number of bytes to transmit)
+"d  constant RXCOUNT     ( number of bytes to receive)
+"e  constant CMDPOINT    ( 1 byte pointer to command bytes )
+"f  constant TXPOINT     ( pointer to transmit bytes)
+"11 constant RXPOINT     ( pointer to receive bytes)
+===
+
+ld target/8051/n76e003/n76e003.mu4
+flash
+ld work/Nuvoton/FONT
+ld work/Nuvoton/I2ISR
+
+$3c constant SSD  -- slave address
+
+__meta
+flash
+
+VARIABLE TXBF 2 allotr	-- TX buffer, 4 bytes
+VARIABLE COLROW
+VARIABLE #count
+VARIABLE radixx
+
+--  send n (1..4) bytes to slave a
+label (snd)
+: snd ( bn .. b1 b0 n a -- )
+	>R  a[ DPL CMDCOUNT mov 0 # TXCOUNT mov 0 # RXCOUNT mov ]
+	0 do1 TXBF I1 + C! loop1
+	TXBF  CMDPOINT C!I
+	R> I2S
+;
+
+: SSD_snd SSD snd ;
+
+-- position cursor
+: PC  ( column row -- )
+	$B0 + SWAP 2+
+	$10 /MOD
+	$10 +
+	0 4 SSD_snd
+;
+
+: crh1 COLROW @ ;
+: crh2 $FF AND  ;
+
+: EXG a[ DPL a mov DPH DPL mov a DPH mov ] ;
+: ROW ( --c)
+   crh1 crh2 ;
+: COL ( -- c)
+   crh1 EXG crh2 ;
+
+-- store cursor position in COLROW   
+: CP! ( column row -- ) SWAP "100 U* + COLROW ! ;
+
+: PC! 2DUP CP! PC ;
+
+: #ROW ( increment row if necessary)
+   COL #21 = if
+      0 ROW 1+ 
+      DUP 8 = if DROP 0  then PC!
+   then
+;
+
+: COL+ $100 COLROW +! #ROW ;
+
+-- send display command
+: dcmd ( c -- )
+	0 2 SSD_snd
+;
+
+-- Translates ASCII to address of bitpatterns:
+: a>bp  ( c -- c-adr ) 
+	#32 MAX #127 MIN  #32 - 6 U* FONT +
+;
+
+-- Translate digit to address of bitpatterns:
+: d>bp ( n -- a)
+   dup #10 < NOT if
+      7 +
+   then
+   #16 + 6 U* FONT +
+;
+
+: disp ( a -- )
+   "40 TXBF C! a[ PSW .5 setb 1 # CMDCOUNT mov 
+   6 # TXCOUNT mov 0 # RXCOUNT mov TXBF # CMDPOINT mov ] TXPOINT !I 
+   SSD I2S 
+;
+
+
+-- Display character:
+: drc  ( c --)
+   a>bp disp  COL+ ;
+;
+
+-- display digit
+: d# ( n -- )
+	d>bp disp COL+
+;
+
+: n#h ( n -- di ... d0)
+   0 #count !
+   radixx @ >R 
+   R@ #10 = if DUP 0< if #45 drc NEGATE then then
+   begin 1 #count +! R@ /MOD $FFF AND DUP 0= until R> 2DROP
+;
+
+: ##### 4 for #35 drc next ;
+
+: n#
+   DUP $8000 = radixx @ #10 = AND if 
+   DROP #####  ; ] then
+   n#h
+   #count @ 0 do DUP #10 < if d# else $37 + drc then loop
+;
+
+-- spaces
+: spc  ( u --)
+      1- [ FONT ] literal SWAP for1
+        DUP disp 
+      next1 DROP
+;
+
+-- counted string
+: str ( a -- a+1 c)
+   1+ DUP 1- C@F
+;
+
+-- display n characters @ a
+: t# ( a n -- )
+   0 do DUP C@F drc 1+ loop DROP
+;
+
+-- clear screen
+: cls
+   0 0 7 for 2DUP PC #22 spc 1+ next DROP 0 PC!  
+;
+
+-- Initialise display
+: SSDI  ( --)
+   I2I
+--   0 1 SSD_snd ( release the bus?)
+   #10 radixx !
+--   cls
+   $af dcmd
+;
+
+hex

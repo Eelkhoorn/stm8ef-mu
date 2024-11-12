@@ -1,0 +1,203 @@
+loading SH1106-2 OLED driver
+cr cr
+."       !! Literal strings have to be compiled with O$¨ !!" 
+cr
+
+-- Driver for SH1106 oled displays 128x64 over i2c
+-- (651 bytes excl font)
+
+-- ssdi ( --) initialise i2c and ssd1306-display
+-- cls ( --) clear screen
+-- dtxt ( adr --)	display text compiled with $"
+-- Text has to be compiled before it can be displayed.
+-- $" text to be displayed" constant txt
+-- txt tt# will display "text to be displayed" on the oled screen.
+-- n#	( n --) display number
+-- 1234 d#	will display "1234".
+
+-- The display has 8 pages (lines) of 128x8 dots. Positioning is done by sending display commands:
+-- snd (b b .. b0 n --)	send multiple (n) display commands, last byte b0 = 0 for positioning
+-- 																	  b0 = $40 for dots to display 
+
+-- Display positioning commands:
+-- $B0 - $B7	Vertical position: Line 0 - line7
+-- 0-$F	Horizontal position in steps of 1 dot
+-- $10 -$17	Horizontal position in steps of 16 dots
+-- $B2 $13 $5 0 4 $3c snd
+-- will position to third line ($B2), dot 53 ($13 = 3 x 16, $5 = 5, together 53).
+-- snd needs the number of display commands to be send, and the slave address.
+-- 53 2 pc will do the same. 
+
+-- API:
+--   * I2ISR array, acts as an ISR "register file"
+--     - byte 0: ER < 0 indicates error (bits 6:0 copied from I2C_SR2)
+--     - byte 1: SA slave address (0..127)
+--     - byte 2: CCOUNT number of command bytes
+--     - byte 3: TCOUNT number of bytes in write phase
+--     - byte 4: RCOUNT number of bytes in read phase
+--     - byte 5,6 : CPOINT command buffer pointer
+--     - addr 7,8 : TPOINT transmit buffer pointer
+--     - addr 9,10: Receive buffer pointer
+
+ld work/lib/FONT
+ld work/lib/I2ISR	-- i2c interrupt service routine
+
+$3c constant SSD  -- slave address
+
+-- Temp. constants for I2ISR register access for user code
+I2ISR 2 + constant CCOUNT  -- char number of command bytes
+I2ISR 3 + constant TCOUNT  -- char number of bytes TX
+I2ISR 4 + constant RCOUNT  -- char number of bytes RX
+I2ISR 5 + constant CPOINT  -- points to command buffer 
+I2ISR 7 + constant TPOINT  -- points to TX buffer, starting with CMD/ADDR
+I2ISR 9 + constant RPOINT  -- points to RX buffr
+
+meta
+
+-- substract #32 during compiling iso during interpreting of text
+: O$"
+	\f " dup \m c, swap m ! for m* #32 - \m c, next
+;
+
+flash
+__meta
+
+VARIABLE LBF 4 allotr	-- character buffer, 6 bytes
+VARIABLE COLROW
+VARIABLE #count
+VARIABLE radixx
+
+-- mm* increments content of USRHLD (memory pointer) and puts memory content on the stack
+-- DECW X DECX X LD A,[USRHLD] LD (1,X),A LDW Y,USRHLD  INCW Y LDW USRHLD,Y
+: MM* [ $5A5A , $92C6 , USRHLD c, $E701 ,  $90BE , USRHLD c, $905C , $90BF , USRHLD c, ] ;
+
+: SSD_snd SSD snd ;
+
+-- position cursor
+: PC  ( column row -- )
+	[ $B0 ]lit+   -- 	$B0 + 
+	SWAP 2+
+	$10 /MOD
+	[ $10 ]lit+   -- 	#16 +
+	0 4 SSD_snd
+;
+
+: CRH1 COLROW @ ;
+: CRH2 $FF AND  ;
+
+: ROW ( --c)
+   CRH1 CRH2 ;
+: COL ( -- c)
+   CRH1 EXG CRH2 ;
+
+-- store cursor position in COLROW   
+: CP! ( column row -- ) SWAP 2+ $100 * + COLROW ! ;
+
+: PC! 2DUP CP! PC ;
+
+: #ROW
+   COL #21 = if
+      0 ROW 1+ 
+      DUP 8 = if DROP 0  then PC!
+   then
+;
+
+: COL+ $100 COLROW +! #ROW ;
+
+
+-- send n bytes @ a to display buffer
+: SB ( a n -- )
+	TCOUNT C!
+	TPOINT !
+	$40 1 SSD_snd
+; 
+
+-- send display command
+: DCMD ( c -- )
+	0 2 SSD_snd
+;
+
+-- Translates (ASCII -/- #32) to address of bitpatterns:
+-- faster 5 * FONT + for values under $FF
+--  >Y LD A,#5 MUL Y,A ADDW Y,FONT Y> 
+: A>BP ( c -- a )
+	[ $9093 , $5C5C , $90FE , $A605 , $9042 , $72A9 , FONT , $5A5A , $FF c, ] ;
+
+-- Translate digit to address of bitpatterns:
+: D>BP ( n -- a)
+   [ $10 ]lit+     -- #16+
+   A>BP
+;
+
+: DISP ( a -- )
+   LBF 5 CMOVE LBF 6 SB
+;
+
+-- Display character:
+: DRC  ( c --)
+   A>BP DISP COL+
+;
+
+-- print digit
+: D# ( n -- )
+	D>BP DISP COL+
+;
+
+: N#H ( n -- di ... d0)
+   0 #count !
+   radixx @ >R 
+   R@ #10 = if DUP 0< if #45 DRC NEGATE then then
+   begin 1 #count +! R@ /MOD $FFF AND DUP 0= until R> 2DROP
+;
+
+: ##### 4 for #35 DRC next ;
+
+-- print number
+: N# ( n --)
+   DUP $8000 = radixx @ #10 = AND if 
+   DROP #####  ; ] then
+   N#H
+   #count @ 1- for DUP #10 < if D# else [ $17 ]lit+ DRC then next
+;
+
+-- space
+: SPC  
+	 FONT 3 SB  
+;
+
+-- Type string on OLED
+: T# ( a n --)
+	SWAP USRHLD ! 1- 
+	for MM* DUP if DRC else DROP SPC then next
+;
+
+-- Type string on OLED
+: STR# ( a -- )
+	COUNT T#
+;
+
+-- clear page
+: CP
+	$5500 #132 SB
+;
+
+-- clear screen
+: CLS
+	7 for 0 I PC CP next
+;
+
+-- Initialise display
+: SSDI  ( --)
+   I2I
+   0 1 SSD_snd
+   #10 radixx !
+   CLS
+   $af DCMD
+;
+__host
+meta
+: hex hex $10 \var radixx \t ! remote ;
+: decimal decimal #10 \var radixx \t ! remote ;
+forth
+
+ram

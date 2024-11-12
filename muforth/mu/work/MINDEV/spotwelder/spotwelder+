@@ -1,0 +1,213 @@
+--  Besturing van puntlas-relais, MINDEV board, TM1637 display
+--  TM1637 pin config:
+--             PC4 --> clock
+--             PC3 --> data
+
+--  opto-triac MOC3063 to sence zero-crossing, switch on top of Voltage wave.
+--  use port D3 as input-switch
+--  We are using an external interrupt that triggers the output
+--    and suspends triggering for a bounce-delay.
+--  ISR for both PD3 and TIM1 are in file spotwelder++.
+
+
+--  key constants (A, B, D)
+   #65 constant KEY.SET
+   #66 constant KEY.PLUS
+   #68 constant KEY.MINUS
+
+$818A constant CT		--  memory location of conversion table
+
+$4000 constant EE.BDL		--  main weld pulse duration (cs)
+$4002 constant EE.PRE	--  pre-weld pulse duration
+$4004 constant EE.PAU	--  pause between pre and main weld pulse
+$4006 constant EE.MAI	--  bounce delay for weld switch
+
+variable ptr1
+
+flash
+__meta
+
+VARIABLE m.level  --  menu level 0 .. 2
+VARIABLE m.val    --  parameter value in level 2
+VARIABLE m.ptr    --  current menu
+VARIABLE m.disp   --  last display value
+VARIABLE m.tim    --  backgrnd tick counter
+VARIABLE led#
+
+: split
+   1 for #10 /MOD next ;
+: print3
+   2 for $30 + E7S next ;
+: . split print3 ;
+
+-- display 3 chars at address
+: .menu 2 for DUP I + C@ E7S next DROP ;
+
+: M. ( n -- )
+--  lazy .0: print number only if value has changed
+  DUP m.disp @ = NOT if
+    DUP m.disp ! DUP .
+  then DROP
+;
+
+: conv ( a -- n )		--  convert hex display value at address a to digit n
+   DEPTH >R
+   C@ #10 0 do
+     DUP I CT + C@ = if
+       I LEAVE
+     then
+   loop ( # i | # )
+   DEPTH R> - 0= if
+     0
+   then NIP
+;
+
+: 10^ ( n1 n2 -- n3)  --  n3 = n1 * 10^n2 | n3 = n1 if n2 < 0
+   DUP DUP
+   0< 0= if
+     0= if
+       DROP 1 *
+     else
+       0 do #10 * loop
+     then 
+   else
+     2DROP
+   then
+;
+
+: h2	-- helper word for incd and decrd
+   led# @ 10^ m.val @ DUP @ ROT +
+   0 MAX #999 MIN  SWAP ULOCK ! LOCK
+;
+
+: h1	-- helper word for incd and decrd
+   LED7LAST led# @ - conv
+;
+: swd  ( -- )	-- switch digit
+   DROP
+   led# DUP @ DUP 2 < if
+     1 + SWAP !
+   else
+     0 led# !
+     0 m.tim !
+     $FFFF m.disp !
+     [ here ptr1 \f ! ] $AAAA ( dummy) m.level !	-- back to M0
+   then 
+;
+: incd    1 h2 ;	-- increment digit
+
+: decrd  -1 h2 ;	-- decrement digit
+
+
+--  Implementation hints:
+--  * menu items are Forth words
+--  * a section of the dictionary is used as a linked list
+--  * the name of a word is used as the menu item string
+
+$6C64 , $62 c,  ( this is for displaying "bdl")
+here $C \f - constant M.END
+: bdl. EE.BDL m.val ! ;
+$6572 , $70 c,  ( display "pre")
+: pre.  EE.PRE m.val ! ;	--  "_" better resembles "n" on 7SEG display
+$7561 , $70 c,  ( display "pau")
+: pau. EE.PAU m.val ! ;
+$6961 , $6D c,  ( display "mai")
+here constant M.START
+: mai.  EE.MAI  m.val ! ;	--  "," is blank on 7SEG display
+
+
+: M.next ( -- na )
+  --  rotate to next menu item
+  m.ptr DUP @ $C -
+  DUP M.END = if
+    DROP M.START
+  then
+  DUP ROT !
+;
+
+: M.prev ( -- na )
+--  rotate back one round to the previous menu item
+--  note: this inefficient but OK for < 20 menu items
+  m.ptr @ DUP >R
+  begin
+    M.next DUP
+    R@ = NOT while
+    NIP
+  repeat
+  R> 2DROP
+  DUP m.ptr !
+;
+
+: M.key= ( n key -- n flag )
+  --  compare key code
+  OVER =
+;
+: keyExe ( xtset xt+ xt- -- )
+  --  pressed key selects and executes an xt
+  ?KEY  if else 0 then
+  KEY.SET M.key= if
+    DROP
+    2DROP    EXECUTE  --  xtset
+  else KEY.PLUS M.key= if
+    DROP
+    DROP NIP EXECUTE  --  xt+
+  else KEY.MINUS M.key= if
+    DROP
+    NIP  NIP EXECUTE  --  xt-
+  else
+    2DROP 2DROP       --  do nothing
+  then then then
+;
+
+: M.exec ( n -- a n | def aEE )
+  --  execute m.ptr "method"
+  m.ptr @  EXECUTE
+;
+  
+: M2 ( -- )
+   --  edit parameter value
+   M.exec
+   m.val @ @  .
+   ['] swd ['] incd ['] decrd keyExe
+;
+
+: M1.select
+--  Go to next menu level
+    ['] M2 m.level !
+;
+
+: M1 ( -- )
+-- select parameter
+   ['] M1.select ['] M.next ['] M.prev keyExe
+   m.ptr @ 3 - .menu
+;
+
+here constant ---
+
+$2D2D , $2D c, ( to display "---")
+
+: M0 ( -- )
+--  main menu - normally print EE.CS
+--  enter menu on key "set"
+   m.tim @ #50 < if
+      --- .menu 1  m.tim +!		--  indicate we are back in M0
+   else
+     ?KEY if
+       --  key actions
+       KEY.SET M.key= if
+         ['] M1 m.level !
+       then
+     then
+       EE.MAI @
+       M. ( n -- ) --   print n if number has changed
+   then
+;
+
+: menu ( -- )
+   m.level @ EXECUTE
+;
+
+' M0  ptr1 \f @ 1 + image-! 	--  replace dummy addresses ($AAAA)
+
+ld work/W1209/spotwelder/spotwelder++
+

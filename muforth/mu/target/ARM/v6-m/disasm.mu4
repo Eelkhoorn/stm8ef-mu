@@ -1,0 +1,412 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+loading ARM v6-M Thumb2 disassembler
+
+( Disassemble the v6-m subset of Thumb2 instructions.)
+
+hex
+
+( Words to compile the instruction table.
+| match and exact do masked and exact matches - resp - against the opcode
+| on the stack.
+|
+| If a match is found, the cfa following match is executed, and then the
+| word that called match is exited, with a -1 on the stack! This shortcuts
+| any further tests.
+|
+| If no match was found, the following cfa is skipped, and the matching
+| continues apace.)
+
+: matched  ( op f - op -1 | op)
+   shunt  pop  swap  if  @execute  -1  ^  then  cell+ push ;
+
+( mask op and test against match)
+: match   ( op mask match - op -1 | op)  push  over and  pop =  matched ;
+
+( XXX Currently unused for 16-bit instructions.)
+( exact match)
+: exact  ( op match - op f)  over =  matched ;
+
+
+variable instr-pc  ( points to _start_ of current instruction)
+
+: set-ea  ( addr)  ( mask bit0 in case we're setting ea from loaded Thumb
+                     address or exception vector)
+   -2 and  ea ! ;
+
+
+( All the op printing words have the stack signature: op - op)
+
+
+( Useful punctuation.)
+: comma  ." , " ;
+: .[     ." [ " ;
+: .]     ."  ]" ;
+
+( Standard ways of printing different "types".)
+: .udec  radix preserve  decimal  (u.) type ;
+: .hex   radix preserve  hex       (.) type ;
+
+( #op takes an index, a string of ops, and a "width", and leaves a string
+| on the stack, *including* the trailing whitespace.)
+
+: #op  ( index z" width - a u)  push  swap r@ *  +  pop ;
+
+defer .reg  ( reg)
+-: ( reg)
+   0f and  dup #13 u< if  char r emit  .udec  ^  then
+   #13 - z" splrpc" 2 #op type ;
+
+: raw-regs  [ #] is .reg ;  raw-regs
+
+( From http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf p14.)
+-:  ( reg)
+   z" a1a2a3a4v1v2v3v4v5v6v7v8ipsplrpc"  2 #op type ;
+
+: abi-regs  [ #] is .reg ;
+
+: 4#   # # # # ;
+: .u32  radix preserve hex  <# 4#  char _ hold  4# #> type ;
+
+
+( We would like to print "significant" addresses - like equates - in a
+| symbolic way, both here in the disassembler and in the decompiler.)
+
+: .target  ( 'link)  link>name type ;
+: .equate  ( 'link offset)  swap .target  ?if  ."  + " .udec  then ;
+
+( Let's be smart about equates. Most equates are multiples of four. If we
+| are using a byte or halfword offset, we won't match the equate. We need
+| to match the aligned value and then print the difference, if any. But some
+| equates are *not* multiples of four; for these we want to look for an exact
+| match.
+|
+| Let's try to match equates *twice*: the first time we look for an exact
+| match; the second time for a four-byte-aligned match, which we will print
+| with an offset, if any.)
+
+: equate?  ( a - 'link offset -1 | 0)
+   ( First, look for an exact match.)
+   dup .equates. find-constant if  nip  0 -1  ^  then
+
+   ( If that fails, looked for an aligned match.)
+   dup -4 and ( addr aligned-addr)
+   .equates. find-constant if  swap  3 and  -1  ^  then
+   drop  0 ;
+
+
+( 16-bit instructions.)
+
+( NOTE: Rn shifts by 3; Rm shifts by 6, but RRm shifts by 3 - acts like Rn.)
+:  00r   7 and ;
+: .00r   00r  .reg ;
+
+: Rd    dup         .00r ;
+: Rn    dup  3 u>>  .00r ;
+: Rm    dup  6 u>>  .00r ;
+: Rd8@  dup  8 u>>   00r ;
+: Rd8   Rd8@        .reg ;
+: RRdn  dup  4 u>>  8 and  over 00r  or  .reg ;
+: RRm   dup  3 u>> 0f and                .reg ;
+
+( Shortcuts)
+: Rd,   Rd comma ;
+: Rn,   Rn comma ;
+: Rd8,  Rd8 comma ;
+: RRdn,  RRdn comma ;
+
+( For grabbing single bits out of something.)
+: bit@  ( mask bit# - bit)  u>>  1 and ;
+
+: .r3   Rd,  Rn,  Rm ;
+: imm   radix preserve  hex  char # emit  (.) type ;  ( XXX radix?)
+: i8     dup 0ff and ;
+: woff>   ( woffset - offset)  2* 2* ;  ( word offset to byte offset)
+: hoff>   ( hoffset - offset)  2* ;  ( halfword offset to byte offset)
+: woff8   i8  woff>  imm ;
+
+( Fundamental truths about the ARM PC.)
+: >branch-pc  ( pc - branch-pc)  4 + ;
+: >load-pc    ( pc - load-pc)  >branch-pc  -4 and ; ( What ARM call Align[PC,4])
+
+( _op3 assumes each string takes 3 bytes; adds no following whitespace)
+: _op3  ( index z")  3 #op type ;
+
+( XXX this only sorta works. Later, with IT blocks, we'll have to check if
+| we're inside one, and elide the S then.)
+: .sbit  ( S)  if  char s emit ^  then  space ;
+
+: .op3?s  ( S index z")  _op3  .sbit  3 spaces ;
+: .op3    (   index z")  _op3         4 spaces ;
+: .op3s   (   index z")   1 -rot  .op3?s ;
+
+( .op5 assumes each string takes 5 bytes)
+: .op5  ( index z")  5 #op type  2 spaces ;
+
+: .addsub  ( op S 0/1 - op)   z" addsub" .op3?s ;
+
+( Shift amounts of 0 - except for lsl #0, which has already been matched as
+| a mov - should print as 32.)
+
+( Shift amount of zero really represents a shift of 32.)
+: sh-imm   ( amount)  dup 0=  #32 and  +  imm ;
+
+: .4way-i   ( op z" - op)  over #11 u>> 3 and  swap .op3s ;
+: .sh-i5      z" lsllsrasr???" .4way-i  Rd,  Rn,  dup 6 u>> 1f and  sh-imm ;
+: .mov-r   0  z" mov"          .op3s    Rd,  Rn ;
+
+: .add-r3   1 ( S)  over 9 bit@  .addsub  .r3 ;
+: .add-i3   1 ( S)  over 9 bit@  .addsub  Rd,  Rn,  dup 6 u>>  7 and  imm ;
+
+( An annoying exception: cmp i8 should _not_ sport a trailing 's'. This is
+| the ARM standard; whether it really makes sense is another thing entirely.)
+
+( Another exception: We want to show the add/sub as 3 operand instructions,
+| for consistency.)
+
+: .ri8   Rd8,  i8 imm ;
+: .add-i8   1 ( S)  over #11 bit@  .addsub   Rd8,  .ri8 ;
+: .mov-i8   0  z" mov"      .op3s  .ri8 ;
+: .cmp-i8      ." cmp    "         .ri8 ;
+
+( Another annoying exception: like cmp i8, tst, cmp, and cmn reg-reg ops
+| should _not_ sport a trailing 's'.
+|
+| And we want all but tst, negs, cmp, cmn, and mvns to show 3 registers.)
+
+: .alu
+   dup 6 u>> 0f and ( aluop)  push
+   %1111_0010_1111_1111  r@ bit@  ( S)  r@
+   z" andeorlsllsrasradcsbcrortstnegcmpcmnorrmulbicmvn" .op3?s
+   (  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f )
+   %0111_0000_1111_1111  pop bit@  ( 3reg)  if  Rd,  then  Rd,  Rn ;
+
+: .add-rh                     ." add    "            RRdn,  RRdn,  RRm ;
+: .cmp-rh   dup 8 u>>  3 and  z" ???cmpmov???" .op3  RRdn,         RRm ;
+: .bx       dup 7 bit@        z" bx blx"       .op3                RRm ;
+
+: load-pc+  ( byte-offset - addr)  instr-pc @  >load-pc  + ;
+
+( To disasm loads we want to show the loaded value, so we need to do an
+| "out of sequence" load.)
+
+defer |@  ( fetch cell from image or target, depending on chatting state)
+
+: .ldr-pc   ." ldr    "  Rd8,  .[  i8 woff> load-pc+  dup .u32  .]
+                               ."  = "  |@  dup set-ea  dup .u32
+                               equate? if  ."  ; "  .equate  then ;
+
+: .str-r
+   dup 9 u>> 7 and  z" str  strh strb ldrsbldr  ldrh ldrb ldrsh" .op5
+   Rd,  .[  Rn,  Rm  .] ;
+
+: >i5       dup  6 u>>  1f and ;
+: L@        dup #11 bit@ ;
+: .Rn,i     ( op offset - op)   push  Rd,  .[  Rn,  pop imm  .] ;
+
+: .str  ( Lbit)  z" str  ldr  " .op5 ;
+: .str-i5    L@    .str               >i5 woff>  .Rn,i ;
+: .strb-i5   L@  z" strb ldrb " .op5  >i5        .Rn,i ;
+: .strh-i5   L@  z" strh ldrh " .op5  >i5 hoff>  .Rn,i ;
+
+: .str-sp    L@ .str   Rd8,  ." [ sp, "  woff8  .] ;
+
+: .add-pc-i8   ." add    "  Rd8,  L@  if
+               ." sp, "  woff8  ^  then
+               ." pc, "  woff8  ."  = "  i8 woff> load-pc+  dup set-ea  .u32 ;
+
+( These should *not* have s suffix.)
+: .add-sp-i7   0 ( S)  over 7 bit@  .addsub
+               ." sp, sp, "  dup 7f and  woff> imm ;
+
+: .4way-rr  ( op z" - op)   over 6 u>>  3 and  swap .op5  Rd,  Rn ;
+: .sxt   z" sxth sxtb uxth uxtb " .4way-rr ;
+: .rev   z" rev  rev16???  revsh" .4way-rr ;
+
+( NOTE: .reglist will *not* print the leading "{" if the mask has no
+| registers in it! But since this is an *error* condition, it's ok.)
+
+: .reglist  ( op mask - op)
+   0 swap ( op reg mask)  char { push
+   begin
+      dup 1 and if  pop emit space  over .reg  char , push  then
+      1 u+  u2/
+   dup 0= until  rdrop  2drop  ."  }" ;
+
+( extra is lr or pc - or nothing.)
+: .regmask   ( op extra - op)
+   over 0ff and or  ( 16-bit mask)  .reglist ;
+
+: regmask8  ( op bit8reg - op extra)
+   over 8 bit@  swap << ;
+
+: .push  ." push   "  0e ( lr) regmask8  .regmask ;
+: .pop   ." pop    "  0f ( pc) regmask8  .regmask ;
+
+: .cps    dup 4 bit@  z" cpsiecpsid" .op5
+          dup 1 bit@ if  ." i"  then  ( must be set for v6-m; only option)
+          dup 0 bit@ if  ." f"  then  ( only valid for v7-m!) ;
+
+: .bkpt   ." bkpt   "  i8  imm ;
+: .hint   dup 4 u>>  0f and  z" nop  yieldwfe  wfi  sev  ???  ???  ???  " .op5 ;
+
+: ?ldm-wb  ( op reg - op)
+   dup .reg
+   1 swap <<  over and  0= if  char ! emit  then
+   comma ;
+
+: .ldmia   ." ldmia  "  Rd8@  ?ldm-wb  0 .regmask ;
+: .stmia   ." stmia  "  Rd8   ." !, "  0 .regmask ;
+
+: .undef  ." undef  "  i8  imm ;
+: .svc    ." svc    "  i8  imm ;
+
+: label? ( a - 0 | 'link -1)  .labels. find-constant ;
+
+: .branch-pc  ( hword-offset)
+   hoff>  instr-pc @  >branch-pc  +  dup set-ea
+   dup label? if nip link>name type ^ then  .u32 ;
+
+: .cond  ( cc)
+   0f and  z" beqbnebcsbccbmibplbvsbvcbhiblsbgebltbgtbleb??b??" .op3 ;
+
+: .bcond
+   dup 8 u>>  .cond  i8  dup 80 and if  -100 +  then  .branch-pc ;
+
+: .bra   ." b      "  dup 7ff and  dup 400 and if  -800 +  then  .branch-pc ;
+
+
+( 32-bit instructions.)
+
+( 32-bit bl. For historical reasons the encoding is really strange. The
+| original Thumb instruction set used _two_ separate instructions to set
+| the high and low halves of the branch displacement. With the addition of
+| 32-bit instructions into that same encoding space, the bl instruction has
+| been re-imagined as a 32-bit Thumb instruction with a very odd encoding -
+| and a larger possible displacement than its 16-bit predecessor.)
+
+: bl-offset@  ( op - op hword-offset)
+   dup           7ff and          ( imm11 in v6-m manual)
+   over #16 u>>  3ff and  #11 <<  ( imm10 ditto)  +
+   over #26 bit@  ( S)  push
+   over #11 bit@  ( J2)  r@ xor  1 xor  #21 << ( I2 ditto)  +
+   over #13 bit@  ( J1)  r@ xor  1 xor  #22 << ( I1 ditto)  +
+   pop ( S)  if  [ 1 #23 << negate #] +  then ;
+
+: .bl-dest  ( op - op)
+   bl-offset@ ( hword-offset)  .branch-pc ;
+
+: .bl  ( op - op)   ." bl     "  .bl-dest ;
+
+: .barrier  ( op - op)
+   dup 4 >>  3 and  z" dsbdmbisb???"  3 #op type ;
+
+
+( Define words for pulling out the 4-bit register fields.)
+: reg4  constant ( shift)
+        does> @  ( op shift - op reg)  over swap u>>  0f and ;
+
+( We only need Rn4 and Rd4 for the v6-m instructions, but let's define
+| these all together so they make sense. The v7-m disassembler will need
+| all of them.)
+
+#16 reg4 Rn4
+#12 reg4 Rt4
+  8 reg4 Rd4
+  0 reg4 Rm4
+
+: .Rn4   Rn4 .reg ;
+: .Rt4   Rt4 .reg ;
+: .Rd4   Rd4 .reg ;
+: .Rm4   Rm4 .reg ;
+
+: .Rn4,  .Rn4 comma ;
+: .Rt4,  .Rt4 comma ;
+: .Rd4,  .Rd4 comma ;
+
+
+( Print a SYSm value. See Table B4-1 Special register field encoding
+| from ARM-v6M architecture manual, p304)
+
+: .sysm
+   dup 0ff and
+   dup 10 = if  drop ." PRIMASK" ^  then
+   dup 14 = if  drop ." CONTROL" ^  then
+   z" APSR IAPSREAPSRXPSR ???? IPSR EPSR IEPSRMSP  PSP  "
+   5 #op -trailing type ;
+
+( Move to and from special register.)
+: .mrs  ." mrs    "  .Rd4,         .sysm ;
+: .msr  ." msr    "  .sysm  comma  .Rn4 ;
+
+
+( Is this a 16-bit instruction?)
+: thumb16?  ( op - f)   e800 u< ;
+
+: shred16-v6m  ( op - op)
+   ( All the 16-bit v6m instructions!)
+   ffc0 0000 match  .mov-r    ( really just lsl #0)
+   fc00 1800 match  .add-r3   ( add sub - matches .sh-i5 shift type=11)
+   fc00 1c00 match  .add-i3   ( add sub - matches .sh-i5 shift type=11)
+   e000 0000 match  .sh-i5
+   f800 2000 match  .mov-i8
+   f800 2800 match  .cmp-i8
+   f000 3000 match  .add-i8   ( add sub)
+   fc00 4000 match  .alu
+   ff07 4700 match  .bx       ( bx blx)
+   ff00 4400 match  .add-rh
+   fc00 4400 match  .cmp-rh   ( cmp mov)
+   f800 4800 match  .ldr-pc
+   f000 5000 match  .str-r    ( str strh strb ldrsb ldr ldrh ldrb ldrsh)
+   f000 6000 match  .str-i5   ( str ldr)
+   f000 7000 match  .strb-i5  ( strb ldrb)
+   f000 8000 match  .strh-i5  ( strh ldrh)
+   f000 9000 match  .str-sp   ( str ldr)
+   f000 a000 match  .add-pc-i8   ( add pc, add sp)
+   ff00 b000 match  .add-sp-i7   ( add to sp, sub from sp)
+   ff00 b200 match  .sxt      ( sxth sxtb uxth uxtb)
+   fe00 b400 match  .push
+   ffec b660 match  .cps      ( cpsie, cpsid)
+   ff00 ba00 match  .rev      ( rev rev16 revsh)
+   fe00 bc00 match  .pop
+   ff00 be00 match  .bkpt
+   ff8f bf00 match  .hint     ( nop yield wfe wfi sev)
+   f800 c000 match  .stmia
+   f800 c800 match  .ldmia
+   ff00 de00 match  .undef    ( permanently undefined)
+   ff00 df00 match  .svc
+   f000 d000 match  .bcond
+   f800 e000 match  .bra
+   0  ( no match) ;
+
+: shred32-v6m  ( op - op)
+   ( All the 32-bit v6-m instructions!)
+   f800_d000 f000_d000 match  .bl
+   ffff_ffc0 f3bf_8f40 match  .barrier
+   ffff_f000 f3ef_8000 match  .mrs
+   fff0_ff00 f380_8800 match  .msr
+   0  ( no match) ;
+
+( Support for interactive disassembly.)
+: dis+  ( a - a' 0)  drop  p @  0 advance  0 ;
+: dis-  ( a - a' 0)            -2 advance  0 ;
+
+: op*   ( - op16)  c* c*  lohi> ;
+: .op   ( op)   radix preserve hex  <# 4# #> type space ;
+
+( Defer so v7-m code can add more instructions.)
+defer shred16   ' shred16-v6m is shred16
+defer shred32   ' shred32-v6m is shred32
+
+( The workhorse.)
+: 1dis  ( a)
+   dup  set-ea  ( default ea: stay put)
+   dup label? if
+      over _addr .nesting space  ." label " .target  then
+   dup .addr .nesting space  dup  p !  instr-pc !
+             op*  ( op1) dup .op  dup thumb16? if
+                                6 spaces    shred16  else
+      10 <<  op*  ( op2) dup .op  space  +  shred32  then
+   0= if  ( no match)  ." ** undecoded instruction **"  then  drop  space ;

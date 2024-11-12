@@ -1,0 +1,103 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+( meta.mu4 - bits common to all metacompiler targets)
+
+( daf 2001-feb-02. Created, from v25 version.)
+( daf 2002-apr-01. Converted to muforth.)
+
+loading Meta compiler common
+
+forth  decimal
+
+( Metacompiler vocabs)
+sealed .meta.      ( used outside of target definitions - the `meta' forth)
+sealed .meta-compiler.  ( used inside target definitions - the `meta' compiler)
+sealed .assembler. ( the host-resident target assembler)
+sealed .target.    ( the target words - like `forth' on the host)
+
+: meta                    .meta. definitions ;
+: meta-compiler  .meta-compiler. definitions ;
+: assembler          .assembler. definitions ;
+: target                .target. definitions ;
+
+compiler
+: \m   ( compile from meta)                    .meta. \chain ;
+: \mc  ( compile from meta-compiler)  .meta-compiler. \chain ;
+: \a   ( compile from assembler)          .assembler. \chain ;
+: \t   ( compile from target)                .target. \chain ;
+
+forth
+
+( XXX delete when we go thru and eradicate compile, )
+: compile,  , ;
+
+( The various token consumers for each mode.)
+-:  ."  (assembling)"  ;
+-:  .assembler. find  if  execute ^  then
+         .meta. find  if  execute ^  then  ( equates are in .meta.)
+        .forth. find  if  execute ^  then  ( utility words in .forth.)
+                                           number ;
+mode __asm
+
+-:  ."  (compiling an assembler macro)"  ;
+-:
+    .assembler. find  if  compile, ^  then  ( the assembler's if/then/begin ...)
+     .compiler. find  if  execute  ^  then  ( ... trump the compiler's)
+         .meta. find  if  compile, ^  then
+        .forth. find  if  compile, ^  then  ( utility words in .forth.)
+                                            number literal ;
+mode __macro
+
+-:  ."  (meta-interpreting)"  ;
+-:     .meta. find  if  execute ^  then
+      .forth. find  if  execute ^  then  number ;
+mode __meta
+
+( XXX we don't even use this yet...)
+0 .if
+( only one that we can't define until we know what it means to make target
+| literals!)
+-:  ."  (meta-compiling)"  ;
+-:  .meta-compiler. find  if  execute ^  then
+           .target. find  if  execute  \m compile, ^  then  \m number \m literal ;
+mode __meta-colon
+.then
+
+( Common things we'll always want when meta-colon compiling.)
+meta-compiler
+: (     \f ( ;   ( comments are nice!)
+: --    \f -- ;  ( ditto!)
+
+: .if      \ .if   ;  ( and conditional compilation is nice too)
+: .else    \ .else ;
+: .then    \ .then ;
+: .ifdef   \ .ifdef ;
+: .ifndef  \ .ifndef ;
+: .def     \ .def ;
+
+forth
+
+-- ------------------------------------------------------------------------
+-- Everything below this is a CROCK and should be removed!
+-- ------------------------------------------------------------------------
+
+-- : inside   meta-compiler ;
+-- : .inside.   .meta-compiler. ;
+
+( kludge - for conditionals - XXX remove later)
+: .not  not ;
+: .and  and ;
+: .or   or ;
+
+: \   .meta. chain' execute ;  ( escape to meta - find and execute a word)
+: __forth  \ [ ;  ( it's nice to be able to do this - idempotently - from forth)
+
+meta
+: \     .forth. chain' execute ;  ( escape to forth - find and execute a word)
+: __forth  \ [ ;
+: equ  ( make a constant in .meta.)
+  current preserve  meta constant ;
+forth
+

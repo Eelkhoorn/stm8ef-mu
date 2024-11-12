@@ -1,0 +1,128 @@
+                                      1 ;--------------------------------------------------------
+                                      2 ; File Created by SDCC : free open source ANSI-C Compiler
+                                      3 ; Version 4.2.0 #13081 (Linux)
+                                      4 ;--------------------------------------------------------
+                                      5 	.module main
+                                      6 	.optsdcc -mstm8
+                                      7 	
+                                      8 ;--------------------------------------------------------
+                                      9 ; Public variables in this module
+                                     10 ;--------------------------------------------------------
+                                     11 	.globl _main
+                                     12 	.globl _forth
+                                     13 	.globl _forthData
+                                     14 	.globl _forthUser
+                                     15 ;--------------------------------------------------------
+                                     16 ; ram data
+                                     17 ;--------------------------------------------------------
+                                     18 	.area DATA
+                           000030    19 _forthUser	=	0x0030
+                           000080    20 _forthData	=	0x0080
+                                     21 ;--------------------------------------------------------
+                                     22 ; ram data
+                                     23 ;--------------------------------------------------------
+                                     24 	.area INITIALIZED
+                                     25 ;--------------------------------------------------------
+                                     26 ; Stack segment in internal ram
+                                     27 ;--------------------------------------------------------
+                                     28 	.area	SSEG
+      000001                         29 __start__stack:
+      000001                         30 	.ds	1
+                                     31 
+                                     32 ;--------------------------------------------------------
+                                     33 ; absolute external ram data
+                                     34 ;--------------------------------------------------------
+                                     35 	.area DABS (ABS)
+                                     36 
+                                     37 ; default segment ordering for linker
+                                     38 	.area HOME
+                                     39 	.area GSINIT
+                                     40 	.area GSFINAL
+                                     41 	.area CONST
+                                     42 	.area INITIALIZER
+                                     43 	.area CODE
+                                     44 
+                                     45 ;--------------------------------------------------------
+                                     46 ; interrupt vector
+                                     47 ;--------------------------------------------------------
+                                     48 	.area HOME
+      008000                         49 __interrupt_vect:
+      008000 82 00 80 73             50 	int s_GSINIT ; reset
+      008004 82 00 00 00             51 	int 0x000000 ; trap
+      008008 82 00 00 00             52 	int 0x000000 ; int0
+      00800C 82 00 00 00             53 	int 0x000000 ; int1
+      008010 82 00 00 00             54 	int 0x000000 ; int2
+      008014 82 00 00 00             55 	int 0x000000 ; int3
+      008018 82 00 00 00             56 	int 0x000000 ; int4
+      00801C 82 00 00 00             57 	int 0x000000 ; int5
+      008020 82 00 00 00             58 	int 0x000000 ; int6
+      008024 82 00 00 00             59 	int 0x000000 ; int7
+      008028 82 00 81 49             60 	int _EXTI0_IRQHandler ; int8
+      00802C 82 00 81 49             61 	int _EXTI1_IRQHandler ; int9
+      008030 82 00 81 49             62 	int _EXTI2_IRQHandler ; int10
+      008034 82 00 81 49             63 	int _EXTI3_IRQHandler ; int11
+      008038 82 00 81 49             64 	int _EXTI4_IRQHandler ; int12
+      00803C 82 00 81 49             65 	int _EXTI5_IRQHandler ; int13
+      008040 82 00 81 49             66 	int _EXTI6_IRQHandler ; int14
+      008044 82 00 81 49             67 	int _EXTI7_IRQHandler ; int15
+      008048 82 00 00 00             68 	int 0x000000 ; int16
+      00804C 82 00 00 00             69 	int 0x000000 ; int17
+      008050 82 00 00 00             70 	int 0x000000 ; int18
+      008054 82 00 81 49             71 	int _TIM2_IRQHandler ; int19
+      008058 82 00 00 00             72 	int 0x000000 ; int20
+      00805C 82 00 81 49             73 	int _TIM3_IRQHandler ; int21
+      008060 82 00 00 00             74 	int 0x000000 ; int22
+      008064 82 00 81 49             75 	int _TIM1_IRQHandler ; int23
+      008068 82 00 00 00             76 	int 0x000000 ; int24
+      00806C 82 00 81 49             77 	int _TIM4_IRQHandler ; int25
+                                     78 ;--------------------------------------------------------
+                                     79 ; global & static initialisations
+                                     80 ;--------------------------------------------------------
+                                     81 	.area HOME
+                                     82 	.area GSINIT
+                                     83 	.area GSFINAL
+                                     84 	.area GSINIT
+      008073                         85 __sdcc_init_data:
+                                     86 ; stm8_genXINIT() start
+      008073 AE 00 00         [ 2]   87 	ldw x, #l_DATA
+      008076 27 07            [ 1]   88 	jreq	00002$
+      008078                         89 00001$:
+      008078 72 4F 00 00      [ 1]   90 	clr (s_DATA - 1, x)
+      00807C 5A               [ 2]   91 	decw x
+      00807D 26 F9            [ 1]   92 	jrne	00001$
+      00807F                         93 00002$:
+      00807F AE 00 00         [ 2]   94 	ldw	x, #l_INITIALIZER
+      008082 27 09            [ 1]   95 	jreq	00004$
+      008084                         96 00003$:
+      008084 D6 80 8F         [ 1]   97 	ld	a, (s_INITIALIZER - 1, x)
+      008087 D7 00 00         [ 1]   98 	ld	(s_INITIALIZED - 1, x), a
+      00808A 5A               [ 2]   99 	decw	x
+      00808B 26 F7            [ 1]  100 	jrne	00003$
+      00808D                        101 00004$:
+                                    102 ; stm8_genXINIT() end
+                                    103 	.area GSFINAL
+      00808D CC 80 70         [ 2]  104 	jp	__sdcc_program_startup
+                                    105 ;--------------------------------------------------------
+                                    106 ; Home
+                                    107 ;--------------------------------------------------------
+                                    108 	.area HOME
+                                    109 	.area HOME
+      008070                        110 __sdcc_program_startup:
+      008070 CC 80 90         [ 2]  111 	jp	_main
+                                    112 ;	return from main will return to caller
+                                    113 ;--------------------------------------------------------
+                                    114 ; code
+                                    115 ;--------------------------------------------------------
+                                    116 	.area CODE
+                                    117 ;	main.c: 20: void main(void)
+                                    118 ;	-----------------------------------------
+                                    119 ;	 function main
+                                    120 ;	-----------------------------------------
+      008090                        121 _main:
+                                    122 ;	main.c: 24: forth();              // the Forth REPL never returns
+                                    123 ;	main.c: 28: }
+      008090 CC 81 85         [ 2]  124 	jp	_forth
+                                    125 	.area CODE
+                                    126 	.area CONST
+                                    127 	.area INITIALIZER
+                                    128 	.area CABS (ABS)

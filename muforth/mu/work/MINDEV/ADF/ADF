@@ -1,0 +1,149 @@
+loading work/MINDEV/ADF/ADF
+-- Register calculaion for ADF4351, 1kHz resolution, range 33 - 4294.9 MHz 
+-- Connect PD2 to LE, C5 (CLK) to CLK and C6 to DAT.
+
+ld target/STM8/MINDEV.mu4
+ld aliases
+
+flash
+
+ld work/lib/SH1106-SPI
+ld work/lib/D+!
+ld work/lib/D*
+ld work/lib/UD<
+ld work/lib/D:
+
+__meta
+
+eeprom
+here constant EPR
+hex
+1E3 , C448 ,
+800 , E1A1 ,
+  2 ,  E42 ,
+  0 ,  4B3 ,
+ C1 , 9404 ,
+ 58 ,    5 ,
+decimal
+
+flash
+VARIABLE RR 22 allotr		-- array for 6 32 bit regs
+VARIABLE Fro 2 allotr		-- output freq
+VARIABLE Fvco 2 allotr		-- VCO freq
+VARIABLE Fpfd 2 allotr
+VARIABLE Res 2 allotr
+VARIABLE Int
+VARIABLE Frac
+VARIABLE Mod				-- modulus
+VARIABLE Fdv
+CVAR Pow
+
+-- Power of two
+: p2 ( n -- n )
+	1 SWAP DUP if
+		0do1 [ $6801 , ( SLL (1,X) ] loop1
+	else
+		DROP
+	then
+;
+-- $9D9D , $9D9D , $9D c, 
+
+-- set RFdiv
+: Calc ( -- )
+	6 0 $400			-- 67108864 (=$1.0000.0000/64)
+	begin
+		2DUP 1- Fro 2@ UD< while
+		ROT 1- ROT ROT 2 D*
+	repeat
+	2DROP DUP [ Fdv ]!
+	p2 Fro 2@ ROT D* 2DUP Fvco 2!
+	( Fvco ) Fpfd 2@ D/ DROP [ Int ]!
+	Res 2@ D/ DROP [ Frac ]! 2DROP
+	Fpfd 2@ Res 2@ D/ DROP [ Mod ]! 2DROP
+;
+
+-- set/reset bits in double
+: sba ( a u i n -- )
+	OVER + SWAP do1 2DUP 1 AND i1 ROT SWAP BF! 2/ loop1 2DROP
+;
+
+-- update reg array
+: ua
+	RR [ Frac ]@ #19 #12 sba
+	RR [ Int ]@ 2DUP 1 AND #31 1 sba
+	2/ 0 #15 sba
+	RR 4 + [ Mod ]@ #19 #12 sba
+	RR #16 + DUP [ Fdv ]@ 4 3 sba
+	[ Pow ]C@ 3 + 19 3 sba
+;
+
+: pls  ( -- )	-- give pulse on LE
+	[ 1 PD_ODR 2 ]B!
+	[ 0 PD_ODR 2 ]B!
+;
+
+-- send 4 bytes starting at address a
+: s4 ( a -- )
+	-o		-- disable oled, (on same spi bus)
+	4 0do1 DUP i1 + C@ >S loop1 pls DROP
+	+o
+;
+
+-- send all 6 registersdata
+: send ( a-- )
+	5 for1 DUP i1 4* + s4 next1 DROP
+;
+
+-- update regs on board
+: ud
+	ua RR send
+;
+
+: init ( -- )
+	EPR RR #24 CMOVE
+	[ 1 PD_DDR 2 ]B!
+	[ 1 PD_CR1 2 ]B!
+	0 SPIon
+	RR send
+;
+
+ld work/MINDEV/ADF/ADF+
+
+comment ===
+
+-- RFOUT = [INT + (FRAC/MOD)] × (fPFD/RF Divider)
+-- RFin = 25 MHz
+-- Fpfd = RFin /8 = 3.125 MHz	(8 in reg. 2: RF reference division factor (1 to 1023))
+-- Mod = Fpfd / (res x 2^fdv)
+-- res = fPFD/(MOD x 2^fdv)
+
+RFOUT = [INT + (FRAC/MOD)] × (fPFD/RF Divider)
+resolution = fPFD/(MOD x RF Divider)
+fPFD = RFin/
+
+Int		R0	15-30
+Frac	R0	3-14
+Mod		R1	3-14
+Fdv		R4	20-22
+OE		R4	5		output enable 0|1
+OP		R4	3-4		output power  0..3
+
+Check with Cinergy TstickRC and GQRX:
+error 26.6 kHz @ 880 MHz	1:33080
+error 1460 Hz @ 55 MHz		
+error 2600 Hz @94.5 Mhz		1:36350
+error 2930 Hz @ 100 MHz		1:34130
+
+: K ( u -- d )
+	#1000 um*
+;
+
+: M ( u -- d )
+	*k #1000 d*
+;
+
+-- set output freq
+: so ( n n n -- )
+	>R >R M R> k D+ R> 0 D+ Fro 2!
+;
+===

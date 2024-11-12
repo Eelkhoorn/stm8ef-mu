@@ -1,0 +1,46 @@
+-- convert bit# (0-7) to byte mask
+
+loading b>m8
+
+
+.ifndef (b>m8)
+-d (b>m8)
+
+hex
+__meta
+
+: b>m8 ( bit# -- mask)
+-- LD A,(1,X)  LDW Y,#1  LDW (X),Y  TNZ A   never  if  begin  SLL (1,X)  DEC A swap  then  0=  until
+  [ E601 , 90AE , 1 , ff4d ,  never  if  begin  6801 , 4a c, swap  then  0=  until ] ;
+
+comment ===
+Addr     Opcode         Instruction                              Cycles
+-------  ------------   ----------------------------------       ------
+0x0000:  e6 01          ld A, ($01,X)                            1
+0x0002:  90 ae 00 01    ldw Y, #$1                               2
+0x0006:  ff             ldw (X),Y                                2
+0x0007:  4d             tnz A                                    1
+0x0008:  20 03          jra $d  (offset=3)                       2
+0x000a:  68 01          sll ($01,X)                              1
+0x000c:  4a             dec A                                    1
+0x000d:  26 fb          jrne $a  (offset=-5)                     1-2
+0x000f:  81             ret                                      4
+
+One byte shorter but 1 cycle slower in the loop
+: b>m8
+-- [ LDW Y,#1  LD A,(1,X)   never  if  begin SLLW Y DEC A swap  then  0=  until  LDW (X),Y ]
+  [ 90ae , 1 , e601 ,  never  if  begin 9058 , 4a c, swap  then  0=  until ff c, ] ;
+
+Addr     Opcode         Instruction                              Cycles
+-------  ------------   ----------------------------------       ------
+0x0000:  90 ae 00 01    ldw Y, #$1                               2
+0x0004:  e6 01          ld A, ($01,X)                            1
+0x0006:  20 03          jra $b  (offset=3)                       2
+0x0008:  90 58          sllw Y                                   2
+0x000a:  4a             dec A                                    1
+0x000b:  26 fb          jrne $8  (offset=-5)                     1-2
+0x000d:  ff             ldw (X),Y                                2
+0x000e:  81             ret                                      4
+===
+
+.then

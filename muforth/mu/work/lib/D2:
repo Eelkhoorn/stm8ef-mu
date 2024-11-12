@@ -1,0 +1,31 @@
+loading work/lib/D2:  rshift on double
+
+.ifndef (D2:)
+
+-d (D2:)
+
+__meta
+
+: D2/ ( ul uh -- d)
+	[ $4f90  , $93fe  , $578a  , $90ff  , $9386  , 
+	  $6602  , $6603  , $ee02  , $51ef  , $02 c, ] ;
+; 
+
+.then
+
+comment ===
+	CLR A
+	LDW Y,X
+	LDW X,(X)
+	SRAW X
+	PUSH CC
+	LDW (Y),X
+	LDW X,Y
+	POP CC
+	RRC (2,X)
+	RRC (3,X)
+	LDW X,(2,X)
+	EXGW X,Y
+	LDW (2,X),Y
+	RET
+===

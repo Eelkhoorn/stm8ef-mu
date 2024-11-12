@@ -1,0 +1,24 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+0 .if
+  ." this should all be skipped - oh wait "
+  0 .if  ." not the nested if "  .else  ." but else at the same level "  .then
+
+.else
+  ." this is real, folks! "
+  1 .if
+     ." and this too "
+    .else
+     ." but not this "
+    .then
+.then
+
+: y  ." yes " ;
+: n  ." no  " ;
+
+.ifdef foobar ." foobar? " .else ." thankfully, no " .then
+.ifndef muforth  ." no muforth? too bad "
+.else  ." phew. I was worried about you "  .then
+

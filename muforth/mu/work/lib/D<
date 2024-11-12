@@ -1,0 +1,13 @@
+.ifndef (D<)
+
+-d (D<)
+
+
+ld work/lib/2SWAP
+ld work/lib/D>
+
+__meta
+
+: D< ( d d -- flag ) 2SWAP D> ;
+
+.then

@@ -1,0 +1,28 @@
+loading work/lib/pindebug
+
+.ifndef (pindebug)
+-d (pindebug)
+
+cr cr ."    Check portpin setting for 2constant portpin" cr
+."    (default PC_ODR 4) " cr
+hex
+__meta
+ram
+
+.ifndef portpin
+PC_ODR 4 2constant portpin 
+.then
+
+-- initialise debug pin
+: dbi [ 1 portpin 2 0 v+ ]B! [ 1 portpin 3 0 v+ ]B! ; 
+
+-- manipulate pins
+: +db [ 1 portpin ]B! ;		( set)
+: -db [ 0 portpin ]B! ;		( reset)
+: tdb [ portpin ]TB ;		( toggle)
+
+-- compile inline
+d: tdbi portpin \ ]TB ;
+
+
+.then

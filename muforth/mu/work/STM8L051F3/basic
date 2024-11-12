@@ -1,0 +1,8 @@
+loading STM8L051F3/basic
+
+-d STM8L051F3
+
+ld target/STM8/STM8L051F3.mu4
+ld aliases
+
+__meta hex

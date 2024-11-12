@@ -1,0 +1,18 @@
+-- D-            double maths utility word (C) RigTig 2017
+
+.ifndef (D-)
+loading work/lib/D-
+
+-d (D-)
+
+
+ld work/lib/D+
+
+__meta
+
+: D- ( d d -- d )
+  DNEGATE D+
+;
+
+.then
+-d

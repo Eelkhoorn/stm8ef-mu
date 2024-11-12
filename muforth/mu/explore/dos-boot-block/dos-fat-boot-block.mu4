@@ -1,0 +1,50 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+( Simple support to print out contents of a FAT filesystem's boot block,
+| which defines various parameters, including the total size, the cluster
+| size, and the geometry.)
+
+: skip  ( a skip -- a+skip a)  over +  swap ;
+: b   1 skip  c@ ;
+: w   b push  b  8 <<  pop + ;  ( little-endian 16-bit word fetch)
+: l   w push  w 16 <<  pop + ;  ( little-endian 32-bit longword fetch)
+
+variable b/sector
+
+: info  ( block)
+   3 +  ( skip jump instruction)  cr
+   8 skip  8  cr type  ."  (OEM signature)"
+   w  cr  dup b/sector !  u. ." bytes per sector"
+   b  cr  u. ." sectors per cluster"
+   w  cr  u. ." reserved sectors"
+   b  cr  u. ." FAT table(s)"
+   w  cr  u. ." root directory entries"
+   w  cr  u. ." total sectors (short)"
+   b  cr  hex  u.  decimal  ." media descriptor"
+   w  cr  dup push  u. ." sectors per FAT (short)"
+   w  cr  u. ." sectors per track"
+   w  cr  u. ." heads"
+   l  cr  u. ." hidden sectors"
+   l  cr  dup u. ." total sectors (long)"
+      cr  b/sector @ * u. ." bytes in filesystem"
+
+   pop 0= if ( fat32)
+      l  cr  u. ." sectors per FAT (long)"
+      4 +
+      l  cr  u. ." (first cluster of root dir)"
+      16 +
+   then
+   2 +
+   b  "29 xor if  cr ." (bad extended signature)"  then
+   l  cr  hex u. decimal ." (partition serial number)"
+   11 skip  cr  11 type  ."  (volume name)"
+            cr   8 type  ."  (filesystem type)"
+   cr ;
+
+: doit  ( parse filename, open file, print info, close)
+   token, ( consume filename from command line)
+   dup count type
+   open-file-ro  dup  read-file  ( fd a len)  drop
+   info  close-file  bye ;

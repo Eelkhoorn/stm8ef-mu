@@ -1,0 +1,764 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 1.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    .__.$$$.                                                    =  002710 L
+    .__.ABS.                                                    =  000000 G
+    .__.CPU.                                                    =  000000 L
+    .__.H$L.                                                    =  000001 L
+    A                                                           =  007F00 
+  7 ABSS                                                           008571 R
+    ADC1_CR1                                                    =  005340 
+    ADC1_CR2                                                    =  005341 
+    ADC1_CR3                                                    =  005342 
+    ADC1_DRH                                                    =  005344 
+    ADC1_DRL                                                    =  005345 
+    ADC1_HTRH                                                   =  005346 
+    ADC1_HTRL                                                   =  005347 
+    ADC1_LTRH                                                   =  005348 
+    ADC1_LTRL                                                   =  005349 
+    ADC1_SQR1                                                   =  00534A 
+    ADC1_SQR2                                                   =  00534B 
+    ADC1_SQR3                                                   =  00534C 
+    ADC1_SQR4                                                   =  00534D 
+    ADC1_SR                                                     =  005343 
+    ADC1_TRIGR1                                                 =  00534E 
+    ADC1_TRIGR2                                                 =  00534F 
+    ADC1_TRIGR3                                                 =  005350 
+    ADC1_TRIGR4                                                 =  005351 
+    ALT_USART_STM8L                                             =  000000 
+  7 ANDD                                                           00834B R
+  7 ASTOR                                                          00837E R
+  7 AT                                                             0082D8 R
+  7 ATEXE                                                          0085D8 R
+  7 ATO                                                            008096 R
+  7 ATOKEY                                                         008386 R
+  7 AYSTOR                                                         008382 R
+    BAREBONES                                                   =  000000 
+  7 BAT                                                            0082C4 R
+    BEEP_CSR1                                                   =  0050F0 
+    BEEP_CSR2                                                   =  0050F3 
+  7 BFAT                                                           00826D R
+  7 BFSTO                                                          00828D R
+    BGADDR                                                      =  00001B 
+    BG_INT                                                      =  000013 
+    BG_RUNMASK                                                  =  000000 
+    BG_TIM_ARRH                                                 =  00525F 
+    BG_TIM_ARRL                                                 =  005260 
+    BG_TIM_CR1                                                  =  005250 
+    BG_TIM_IER                                                  =  005255 
+    BG_TIM_PSCR                                                 =  00525E 
+    BG_TIM_REL                                                  =  0026DE 
+    BG_TIM_SR1                                                  =  005256 
+    BG_USE_TIM1                                                 =  000000 
+    BG_USE_TIM3                                                 =  000000 
+    BITAT                                                       =  00000C 
+    BITSTO                                                      =  000016 
+  7 BOARDINIT                                                      008138 R
+    BOOTSTRAP                                                   =  000000 
+  7 BRAN                                                           008212 R
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 2.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    BRAN_OPC                                                    =  0000CC 
+  7 BRSS                                                           0082A9 R
+    BSPP                                                        =  0007D0 
+    BSPPSIZE                                                    =  000020 
+    CALL_OPC                                                    =  0000CD 
+    CASEINSENSITIVE                                             =  000001 
+  7 CAT                                                            0082ED R
+    CCR                                                         =  007F0A 
+    CELLL                                                       =  000002 
+  7 CELLP                                                          00855F R
+    CFG_GCR                                                     =  007F60 
+  7 CHAT                                                           00810D R
+    CLK_CBEEPR                                                  =  0050CB 
+    CLK_CCOR                                                    =  0050C5 
+    CLK_CKDIVR                                                  =  0050C0 
+    CLK_CRTCR                                                   =  0050C1 
+    CLK_CSSR                                                    =  0050CA 
+    CLK_ECKCR                                                   =  0050C6 
+    CLK_HSICALR                                                 =  0050CC 
+    CLK_HSITRIMR                                                =  0050CD 
+    CLK_HSIUNLCKR                                               =  0050CE 
+    CLK_ICKCR                                                   =  0050C2 
+    CLK_PCKENR1                                                 =  0050C3 
+    CLK_PCKENR2                                                 =  0050C4 
+    CLK_PCKENR3                                                 =  0050D0 
+    CLK_REGCSR                                                  =  0050CF 
+    CLK_SCSR                                                    =  0050C7 
+    CLK_SWCR                                                    =  0050C9 
+    CLK_SWR                                                     =  0050C8 
+  7 CLRW                                                           008581 R
+  7 CMOVE                                                          0085F4 R
+  7 CMOVE1                                                         0085F9 R
+    CODE_START                                                  =  008080 
+  7 COLD                                                           008185 R
+  7 COLD1                                                          008129 R
+    COMPO                                                       =  000040 
+    CONSOLE_HALF_DUPLEX                                         =  000000 
+  7 CPLW                                                           008585 R
+    CR1                                                         =  000003 
+    CR2                                                         =  000004 
+    CRAMLEN                                                     =  000000 
+    CSSLSE_CSR                                                  =  005190 
+  7 CSTOR                                                          0082F7 R
+    CTIM4ARR                                                    =  000045 
+    CTIM4PSCR                                                   =  000002 
+    CUARTBRR                                                    =  00080B 
+  7 DAT                                                            00823B R
+  7 DCAT                                                           008261 R
+  7 DCSTOR                                                         008251 R
+    DDR                                                         =  000002 
+  7 DDROP                                                          0085C6 R
+  7 DDUP                                                           0083BC R
+    DEFOSCFREQ                                                  =  003E80 
+  7 DEPTH                                                          0085A7 R
+    DMA1_C0CR                                                   =  005075 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 3.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    DMA1_C0M0ARH                                                =  00507B 
+    DMA1_C0M0ARL                                                =  00507C 
+    DMA1_C0NDTR                                                 =  005077 
+    DMA1_C0PARH                                                 =  005078 
+    DMA1_C0PARL                                                 =  005079 
+    DMA1_C0SPR                                                  =  005076 
+    DMA1_C1CR                                                   =  00507F 
+    DMA1_C1M0ARH                                                =  005085 
+    DMA1_C1M0ARL                                                =  005086 
+    DMA1_C1NDTR                                                 =  005081 
+    DMA1_C1PARH                                                 =  005082 
+    DMA1_C1PARL                                                 =  005083 
+    DMA1_C1SPR                                                  =  005080 
+    DMA1_C2CR                                                   =  005089 
+    DMA1_C2M0ARH                                                =  00508F 
+    DMA1_C2M0ARL                                                =  005090 
+    DMA1_C2NDTR                                                 =  00508B 
+    DMA1_C2PARH                                                 =  00508C 
+    DMA1_C2PARL                                                 =  00508D 
+    DMA1_C2SPR                                                  =  00508A 
+    DMA1_C3CR                                                   =  005093 
+    DMA1_C3M0ARH                                                =  005099 
+    DMA1_C3M0ARL                                                =  00509A 
+    DMA1_C3NDTR                                                 =  005095 
+    DMA1_C3PARH_C3M1ARH                                         =  005096 
+    DMA1_C3PARL_C3M1ARL                                         =  005097 
+    DMA1_C3SPR                                                  =  005094 
+    DMA1_GCSR                                                   =  005070 
+    DMA1_GIR1                                                   =  005071 
+    DMA_C3M0EAR                                                 =  005098 
+    DM_BK1RE                                                    =  007F90 
+    DM_BK1RH                                                    =  007F91 
+    DM_BK1RL                                                    =  007F92 
+    DM_BK2RE                                                    =  007F93 
+    DM_BK2RH                                                    =  007F94 
+    DM_BK2RL                                                    =  007F95 
+    DM_CR1                                                      =  007F96 
+    DM_CR2                                                      =  007F97 
+    DM_CSR1                                                     =  007F98 
+    DM_CSR2                                                     =  007F99 
+    DM_ENFCTR                                                   =  007F9A 
+  7 DN1                                                            0083D6 R
+  7 DNEGA                                                          0083C1 R
+  7 DO                                                             008643 R
+  7 DROP                                                           008313 R
+  7 DSTOR                                                          008220 R
+  7 DUPP                                                           008316 R
+    EEPROMBASE                                                  =  001000 
+    EEPROMEND                                                   =  0013FF 
+  7 EMIT                                                           008202 R
+  7 EMIT_BG                                                     =  008313 R
+  7 ENDPP                                                          0085C4 R
+  7 END_SDCC_FLASH                                              =  00868B R
+  7 EQUAL                                                          0083D8 R
+  7 EXECU                                                          008218 R
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 4.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+  7 EXG                                                            008557 R
+    EXIT_OPC                                                    =  000081 
+    EXTI_CONF1                                                  =  0050A5 
+    EXTI_CONF2                                                  =  0050AB 
+    EXTI_CR1                                                    =  0050A0 
+    EXTI_CR2                                                    =  0050A1 
+    EXTI_CR3                                                    =  0050A2 
+    EXTI_CR4                                                    =  0050AA 
+    EXTI_SR1                                                    =  0050A3 
+    EXTI_SR2                                                    =  0050A4 
+    EXTNUMPREFIX                                                =  000001 
+    FAMILY                                                      =  000001 
+  7 FLASH                                                          0080EB R
+    FLASHBUF_ADDR                                               =  000740 
+    FLASHEND                                                    =  00FFFF 
+    FLASH_CR1                                                   =  005050 
+    FLASH_CR2                                                   =  005051 
+    FLASH_DUKR                                                  =  005053 
+    FLASH_IAPSR                                                 =  005054 
+    FLASH_PUKR                                                  =  005052 
+    FORTHRAM                                                    =  000000 
+  7 GETSP                                                          0080C0 R
+    HALF_DUPLEX                                                 =  000000 
+    HAS_ADC                                                     =  000000 
+    HAS_ALIAS                                                   =  000001 
+    HAS_BACKGROUND                                              =  000001 
+    HAS_CPNVM                                                   =  000001 
+    HAS_DOES                                                    =  000001 
+    HAS_DOLOOP                                                  =  000001 
+    HAS_FILEHAND                                                =  000000 
+    HAS_INPUTS                                                  =  000000 
+    HAS_KEYS                                                    =  000000 
+    HAS_LCD                                                     =  000000 
+    HAS_LED7SEG                                                 =  000000 
+    HAS_OLDOK                                                   =  000000 
+    HAS_OUTPUTS                                                 =  000000 
+    HAS_RXSIM                                                   =  000000 
+    HAS_RXUART                                                  =  000001 
+    HAS_TXSIM                                                   =  000000 
+    HAS_TXUART                                                  =  000001 
+    I2C1_CCRH                                                   =  00521C 
+    I2C1_CCRL                                                   =  00521B 
+    I2C1_CR1                                                    =  005210 
+    I2C1_CR2                                                    =  005211 
+    I2C1_DR                                                     =  005216 
+    I2C1_FREQR                                                  =  005212 
+    I2C1_ITR                                                    =  00521A 
+    I2C1_OAR2                                                   =  005215 
+    I2C1_OARH                                                   =  005214 
+    I2C1_OARL                                                   =  005213 
+    I2C1_PECR                                                   =  00521E 
+    I2C1_SR1                                                    =  005217 
+    I2C1_SR2                                                    =  005218 
+    I2C1_SR3                                                    =  005219 
+    I2C1_TRISER                                                 =  00521D 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 5.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    IDR                                                         =  000001 
+    IR_CR                                                       =  0052FF 
+    ISPP                                                        =  0007B0 
+    ISPPSIZE                                                    =  000010 
+    ITC_IX_ADC1                                                 =  000012 
+    ITC_IX_CLK                                                  =  000010 
+    ITC_IX_DMA1_01                                              =  000002 
+    ITC_IX_DMA1_23                                              =  000003 
+    ITC_IX_EXTI0                                                =  000008 
+    ITC_IX_EXTI1                                                =  000009 
+    ITC_IX_EXTI2                                                =  00000A 
+    ITC_IX_EXTI3                                                =  00000B 
+    ITC_IX_EXTI4                                                =  00000C 
+    ITC_IX_EXTI5                                                =  00000D 
+    ITC_IX_EXTI6                                                =  00000E 
+    ITC_IX_EXTI7                                                =  00000F 
+    ITC_IX_EXTIB                                                =  000006 
+    ITC_IX_EXTID                                                =  000007 
+    ITC_IX_FLASH                                                =  000001 
+    ITC_IX_I2C1                                                 =  00001D 
+    ITC_IX_LCD                                                  =  000011 
+    ITC_IX_PVD                                                  =  000005 
+    ITC_IX_RI                                                   =  000017 
+    ITC_IX_RTC                                                  =  000003 
+    ITC_IX_SPI1                                                 =  00001A 
+    ITC_IX_TIM1                                                 =  000017 
+    ITC_IX_TIM1CC                                               =  000018 
+    ITC_IX_TIM2                                                 =  000013 
+    ITC_IX_TIM2CC                                               =  000014 
+    ITC_IX_TIM3                                                 =  000015 
+    ITC_IX_TIM3CC                                               =  000016 
+    ITC_IX_TIM4                                                 =  000019 
+    ITC_IX_TLI                                                  =  000000 
+    ITC_IX_USART1_RXD                                           =  00001C 
+    ITC_IX_USART1_TXD                                           =  00001B 
+    ITC_SPR1                                                    =  007F70 
+    ITC_SPR2                                                    =  007F71 
+    ITC_SPR3                                                    =  007F72 
+    ITC_SPR4                                                    =  007F73 
+    ITC_SPR5                                                    =  007F74 
+    ITC_SPR6                                                    =  007F75 
+    ITC_SPR7                                                    =  007F76 
+    ITC_SPR8                                                    =  007F77 
+    IWDG_KR                                                     =  0050E0 
+    IWDG_PR                                                     =  0050E1 
+    IWDG_RLR                                                    =  0050E2 
+  7 KEY                                                            00860E R
+  7 KEY1                                                           00860E R
+    LASTN                                                       =  000000 
+    LCD_CR1                                                     =  005400 
+    LCD_CR2                                                     =  005401 
+    LCD_CR3                                                     =  005402 
+    LCD_CR4                                                     =  00542F 
+    LCD_FRQ                                                     =  005403 
+    LCD_PM0                                                     =  005404 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 6.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    LCD_PM1                                                     =  005405 
+    LCD_PM2                                                     =  005406 
+    LCD_PM3                                                     =  005407 
+    LCD_PM4                                                     =  005408 
+    LCD_PM5                                                     =  005409 
+    LCD_RAM0                                                    =  00540C 
+    LCD_RAM21                                                   =  005421 
+  7 LDADROP                                                        00833C R
+    LEN_7SGROUP                                                 =  000003 
+  7 LESS                                                           0083F7 R
+    LINK                                                        =  000000 
+  7 LOCK                                                           008665 R
+  7 LOCK_FLASH                                                     008678 R
+  7 MAX                                                            008421 R
+  7 MIN                                                            00842A R
+    MINIDICT                                                    =  000000 
+  7 MMEXIT                                                         008429 R
+  7 MMOD                                                           0084CE R
+  7 MMOD1                                                          008497 R
+  7 MMOD2                                                          0084AE R
+  7 MMOD3                                                          0084C2 R
+  7 MMSM1                                                          008461 R
+  7 MMSM3                                                          008465 R
+  7 MMSM4                                                          008471 R
+  7 MMSMa                                                          00846C R
+  7 MMSMb                                                          008477 R
+    MP                                                          =  000004 
+  7 MSMOD                                                          008481 R
+  7 MSTA1                                                          008540 R
+  7 MSTAR                                                          00852A R
+  7 NEGAT                                                          008569 R
+  7 NIP                                                            00830C R
+  7 NZEQUAL                                                        008589 R
+    ODR                                                         =  000000 
+  7 ORR                                                            008356 R
+    OSCFREQ                                                     =  003E80 
+  7 OVER                                                           008303 R
+    PAGESIZE                                                    =  000080 
+    PA_CR1                                                      =  005003 
+    PA_CR2                                                      =  005004 
+    PA_DDR                                                      =  005002 
+    PA_IDR                                                      =  005001 
+    PA_ODR                                                      =  005000 
+    PB_CR1                                                      =  005008 
+    PB_CR2                                                      =  005009 
+    PB_DDR                                                      =  005007 
+    PB_IDR                                                      =  005006 
+    PB_ODR                                                      =  005005 
+    PCE                                                         =  007F01 
+    PCH                                                         =  007F02 
+    PCL                                                         =  007F03 
+  7 PCSTOR                                                         0085CA R
+    PC_CR1                                                      =  00500D 
+    PC_CR2                                                      =  00500E 
+    PC_DDR                                                      =  00500C 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 7.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    PC_IDR                                                      =  00500B 
+    PC_ODR                                                      =  00500A 
+    PD_CR1                                                      =  005012 
+    PD_CR2                                                      =  005013 
+    PD_DDR                                                      =  005011 
+    PD_IDR                                                      =  005010 
+    PD_ODR                                                      =  00500F 
+    PE_CR1                                                      =  005017 
+    PE_CR2                                                      =  005018 
+    PE_DDR                                                      =  005016 
+    PE_IDR                                                      =  005015 
+    PE_ODR                                                      =  005014 
+    PF_CR1                                                      =  00501C 
+    PF_CR2                                                      =  00501D 
+    PF_DDR                                                      =  00501B 
+    PF_IDR                                                      =  00501A 
+    PF_ODR                                                      =  005019 
+    PG_CR1                                                      =  005021 
+    PG_CR2                                                      =  005022 
+    PG_DDR                                                      =  005020 
+    PG_IDR                                                      =  00501F 
+    PG_ODR                                                      =  00501E 
+    PH_CR1                                                      =  005026 
+    PH_CR2                                                      =  005027 
+    PH_DDR                                                      =  005025 
+    PH_IDR                                                      =  005024 
+    PH_ODR                                                      =  005023 
+  7 PICK                                                           008595 R
+    PI_CR1                                                      =  00502B 
+    PI_CR2                                                      =  00502C 
+    PI_DDR                                                      =  00502A 
+    PI_IDR                                                      =  005029 
+    PI_ODR                                                      =  005028 
+  7 PLUS                                                           008333 R
+    PNRX                                                        =  000000 
+    PNTX                                                        =  000000 
+    PORTA                                                       =  005000 
+    PORTB                                                       =  005005 
+    PORTC                                                       =  00500A 
+    PORTD                                                       =  00500F 
+    PORTE                                                       =  005014 
+    PORTF                                                       =  005019 
+    PORTG                                                       =  00501E 
+    PORTH                                                       =  005023 
+    PORTI                                                       =  005028 
+    PORTX                                                       =  000000 
+    PRE_REL                                                     =  000000 
+    PSIM                                                        =  000000 
+  7 PSTOR                                                          0085B3 R
+    PWR_CSR1                                                    =  0050B2 
+    PWR_CSR2                                                    =  0050B3 
+  7 QBRAN                                                          008205 R
+  7 QDUP                                                           008393 R
+  7 QDUP1                                                          00839C R
+  7 QKEY                                                           0081FF R
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 8.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+  7 QKEY_BG                                                     =  00837D R
+  7 QRX                                                            0081E7 R
+  7 QUIT                                                           00861C R
+    RAMBASE                                                     =  000000 
+    RAMEND                                                      =  0007FF 
+    RAMPOOL                                                     =  00001F 
+    RELVER0                                                     =  000009 
+    RELVER1                                                     =  000002 
+  7 RESTC                                                          008687 R
+  7 RETIDLE                                                        00861B R
+  7 RETURN                                                         008184 R
+    RI_ASCR1                                                    =  00543D 
+    RI_ASCR2                                                    =  00543E 
+    RI_CR                                                       =  005450 
+    RI_ICR1                                                     =  005431 
+    RI_ICR2                                                     =  005432 
+    RI_IOCMR1                                                   =  005436 
+    RI_IOCMR2                                                   =  005437 
+    RI_IOCMR3                                                   =  005438 
+    RI_IOCMR4                                                   =  005456 
+    RI_IOGCR                                                    =  00543C 
+    RI_IOIR1                                                    =  005433 
+    RI_IOIR2                                                    =  005434 
+    RI_IOIR3                                                    =  005435 
+    RI_IOIR4                                                    =  005455 
+    RI_IOSR1                                                    =  005439 
+    RI_IOSR2                                                    =  00543A 
+    RI_IOSR3                                                    =  00543B 
+    RI_IOSR4                                                    =  005457 
+    RI_MASKR1                                                   =  005451 
+    RI_MASKR2                                                   =  005452 
+    RI_MASKR3                                                   =  005453 
+    RI_MASKR4                                                   =  005454 
+    RI_RCR                                                      =  00543F 
+  7 ROT                                                            00839D R
+  7 RPAT                                                           00862D R
+    RPP                                                         =  0007FF 
+    RPPLOC                                                      =  0007FF 
+  7 RPSTO                                                          008633 R
+    RST_CR                                                      =  0050B0 
+    RST_SR                                                      =  0050B1 
+    RTC_ALRMAR1                                                 =  00515C 
+    RTC_ALRMAR2                                                 =  00515D 
+    RTC_ALRMAR3                                                 =  00515E 
+    RTC_ALRMAR4                                                 =  00515F 
+    RTC_ALRMASSMSKR                                             =  005166 
+    RTC_ALRMASSRH                                               =  005164 
+    RTC_ALRMASSRL                                               =  005165 
+    RTC_APRER                                                   =  005152 
+    RTC_CALRH                                                   =  00516A 
+    RTC_CALRL                                                   =  00516B 
+    RTC_CR1                                                     =  005148 
+    RTC_CR2                                                     =  005149 
+    RTC_CR3                                                     =  00514A 
+    RTC_DR1                                                     =  005144 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 9.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    RTC_DR2                                                     =  005145 
+    RTC_DR3                                                     =  005146 
+    RTC_ISR1                                                    =  00514C 
+    RTC_ISR2                                                    =  00514D 
+    RTC_SHIFTRH                                                 =  00515A 
+    RTC_SHIFTRL                                                 =  00515B 
+    RTC_SPRERH                                                  =  005150 
+    RTC_SPRERL                                                  =  005151 
+    RTC_SSRH                                                    =  005158 
+    RTC_SSRL                                                    =  005157 
+    RTC_TCR1                                                    =  00516C 
+    RTC_TCR2                                                    =  00516D 
+    RTC_TR1                                                     =  005140 
+    RTC_TR2                                                     =  005141 
+    RTC_TR3                                                     =  005142 
+    RTC_WPR                                                     =  005159 
+    RTC_WUTRH                                                   =  005154 
+    RTC_WUTRL                                                   =  005155 
+  7 RUN                                                            0080E3 R
+  7 RXA                                                            008080 R
+  7 SAVEC                                                          00867D R
+  7 SENDBYTES                                                      0080A2 R
+    SERPRIOTIM                                                  =  000000 
+  7 SETADDR                                                        0080B4 R
+  7 SETSP                                                          0080DF R
+  7 SLASH                                                          0084D3 R
+  7 SLEEP                                                          0081DE R
+  7 SLMOD                                                          0084C3 R
+  7 SPAT                                                           008627 R
+    SPEEDOVERSIZE                                               =  000001 
+    SPH                                                         =  007F08 
+    SPI1_CR1                                                    =  005200 
+    SPI1_CR2                                                    =  005201 
+    SPI1_CRCPR                                                  =  005205 
+    SPI1_DR                                                     =  005204 
+    SPI1_ICR                                                    =  005202 
+    SPI1_RXCRCR                                                 =  005206 
+    SPI1_SR                                                     =  005203 
+    SPI1_TXCRCR                                                 =  005207 
+    SPL                                                         =  007F09 
+    SPP                                                         =  0007A0 
+    SPPLOC                                                      =  0007D0 
+  7 SPSTO                                                          008625 R
+  7 SSMOD                                                          008541 R
+  7 STAR                                                           008525 R
+  7 STASL                                                          008552 R
+    STM8L                                                       =  000001 
+    STM8L051F3                                                  =  000033 
+    STM8L101F3                                                  =  000065 
+    STM8L151K4                                                  =  000098 
+    STM8L152C6                                                  =  000098 
+    STM8L152R8                                                  =  000098 
+    STM8L_101                                                   =  000065 
+    STM8L_LOD                                                   =  000033 
+    STM8L_MHD                                                   =  000098 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 10.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    STM8S                                                       =  000000 
+    STM8S003F3                                                  =  000067 
+    STM8S103F3                                                  =  000067 
+    STM8S105K4                                                  =  000069 
+    STM8S207RB                                                  =  0000CF 
+    STM8S_HID                                                   =  0000CF 
+    STM8S_LOD                                                   =  000067 
+    STM8S_MED                                                   =  000069 
+  7 STORE                                                          0082DF R
+  7 SUBB                                                           00836A R
+  7 SWAPP                                                          00831E R
+    SWIM_CSR                                                    =  007F80 
+    SYSCFG_RMPCR1                                               =  00509E 
+    SYSCFG_RMPCR2                                               =  00509F 
+    SYSCFG_RMPCR3                                               =  00509D 
+  7 TABLE                                                          0080FE R
+    TARGET                                                      =  000098 
+  7 TBOOT                                                          0081DB R
+    TERM_LINUX                                                  =  000001 
+    TIC                                                         =  000027 
+    TICKCNT                                                     =  00001D 
+    TIM1_ARRH                                                   =  0052C3 
+    TIM1_ARRL                                                   =  0052C4 
+    TIM1_CR1                                                    =  0052B0 
+    TIM1_IER                                                    =  0052B5 
+    TIM1_PSCRL                                                  =  0052C2 
+    TIM1_SR1                                                    =  0052B6 
+  7 TIM2IRET                                                       00817D R
+    TIM2_ARRH                                                   =  00525F 
+    TIM2_ARRL                                                   =  005260 
+    TIM2_BKR                                                    =  005265 
+    TIM2_CCER1                                                  =  00525B 
+    TIM2_CCMR1                                                  =  005259 
+    TIM2_CCMR2                                                  =  00525A 
+    TIM2_CCR1H                                                  =  005261 
+    TIM2_CCR1L                                                  =  005262 
+    TIM2_CCR2H                                                  =  005263 
+    TIM2_CCR2L                                                  =  005264 
+    TIM2_CNTRH                                                  =  00525C 
+    TIM2_CNTRL                                                  =  00525D 
+    TIM2_CR1                                                    =  005250 
+    TIM2_CR2                                                    =  005251 
+    TIM2_DER                                                    =  005254 
+    TIM2_EGR                                                    =  005258 
+    TIM2_ETR                                                    =  005253 
+    TIM2_IER                                                    =  005255 
+    TIM2_OISR                                                   =  005266 
+    TIM2_PSCR                                                   =  00525E 
+    TIM2_SMCR                                                   =  005252 
+    TIM2_SR1                                                    =  005256 
+    TIM2_SR2                                                    =  005257 
+    TIM3_ARRH                                                   =  00528F 
+    TIM3_ARRL                                                   =  005290 
+    TIM3_BKR                                                    =  005295 
+    TIM3_CCER1                                                  =  00528B 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 11.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    TIM3_CCMR1                                                  =  005289 
+    TIM3_CCMR2                                                  =  00528A 
+    TIM3_CCR1H                                                  =  005291 
+    TIM3_CCR1L                                                  =  005292 
+    TIM3_CCR2H                                                  =  005293 
+    TIM3_CCR2L                                                  =  005294 
+    TIM3_CNTRH                                                  =  00528C 
+    TIM3_CNTRL                                                  =  00528D 
+    TIM3_CR1                                                    =  005280 
+    TIM3_CR2                                                    =  005281 
+    TIM3_DER                                                    =  005284 
+    TIM3_EGR                                                    =  005288 
+    TIM3_ETR                                                    =  005283 
+    TIM3_IER                                                    =  005285 
+    TIM3_OISR                                                   =  005296 
+    TIM3_PSCR                                                   =  00528E 
+    TIM3_SMCR                                                   =  005282 
+    TIM3_SR1                                                    =  005286 
+    TIM3_SR2                                                    =  005287 
+    TIM4_ARR                                                    =  0052E9 
+    TIM4_CNTR                                                   =  0052E7 
+    TIM4_CR1                                                    =  0052E0 
+    TIM4_CR2                                                    =  0052E1 
+    TIM4_DER                                                    =  0052E3 
+    TIM4_EGR                                                    =  0052E6 
+    TIM4_IER                                                    =  0052E4 
+    TIM4_PSCR                                                   =  0052E8 
+    TIM4_SMCR                                                   =  0052E2 
+    TIM4_SR                                                     =  0052E5 
+    TIM4_SR1                                                    =  0052E5 
+  7 TIMM                                                           00817E R
+  7 TOB                                                            008089 R
+  7 TOW                                                            008090 R
+  7 TWOONEPLUS                                                     0085E5 R
+  7 TXASTOR                                                        0081F6 R
+  7 TXSTOR                                                         0081F3 R
+    UART_BRR1                                                   =  005232 
+    UART_CR2                                                    =  005235 
+    UART_CR5                                                    =  005238 
+    UART_DR                                                     =  005231 
+  7 UART_INT                                                       0081E1 R
+    UART_SR                                                     =  005230 
+  7 ULESS                                                          0083EB R
+  7 ULOCK                                                          008657 R
+  7 UMMOD                                                          008447 R
+  7 UMSTA                                                          0084D8 R
+    UNLINKCORE                                                  =  000000 
+  7 UNLOCK_FLASH                                                   00866A R
+  7 UPLUS                                                          00832C R
+    UPPLOC                                                      =  000000 
+    USART1_BRR1                                                 =  005232 
+    USART1_BRR2                                                 =  005233 
+    USART1_CR1                                                  =  005234 
+    USART1_CR2                                                  =  005235 
+    USART1_CR3                                                  =  005236 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 12.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    USART1_CR4                                                  =  005237 
+    USART1_CR5                                                  =  005238 
+    USART1_DR                                                   =  005231 
+    USART1_GTR                                                  =  005239 
+    USART1_PSCR                                                 =  00523A 
+    USART1_SR                                                   =  005230 
+    USART2_BRR1                                                 =  0053E2 
+    USART2_CR2                                                  =  0053E5 
+    USART2_CR5                                                  =  0053E8 
+    USART2_DR                                                   =  0053E1 
+    USART2_SR                                                   =  0053E0 
+    USART3_BRR1                                                 =  0053F2 
+    USART3_CR2                                                  =  0053F5 
+    USART3_CR5                                                  =  0053F8 
+    USART3_DR                                                   =  0053F1 
+    USART3_SR                                                   =  0053F0 
+    USERRAM                                                     =  00001F 
+    USE_CALLDOLIT                                               =  000001 
+    USE_UART2                                                   =  000000 
+    USE_UART3                                                   =  000000 
+    USREMIT                                                     =  000000 
+    USRHLD                                                      =  000006 
+    USRQKEY                                                     =  000002 
+    WFE_CR1                                                     =  0050A6 
+    WFE_CR2                                                     =  0050A7 
+    WFE_CR3                                                     =  0050A8 
+    WFE_CR4                                                     =  0050A9 
+  7 WITHI                                                          008430 R
+    WORDS_EXTRACORE                                             =  000001 
+    WORDS_EXTRADEBUG                                            =  000000 
+    WORDS_EXTRAEEPR                                             =  000001 
+    WORDS_EXTRAMEM                                              =  000001 
+    WORDS_EXTRASTACK                                            =  000000 
+    WORDS_LINKCHAR                                              =  000001 
+    WORDS_LINKCOMP                                              =  000000 
+    WORDS_LINKINTER                                             =  000000 
+    WORDS_LINKMISC                                              =  000000 
+    WORDS_LINKRUNTI                                             =  000000 
+  7 WRITEBS                                                        0080C5 R
+  7 WSKIPRET                                                       00820D R
+  7 WTO                                                            00809B R
+    WWDG_CR                                                     =  0050D3 
+    WWDG_WR                                                     =  0050D4 
+    XH                                                          =  007F04 
+    XL                                                          =  007F05 
+  7 XORR                                                           008340 R
+    XREG0                                                       =  000008 
+  7 XREG0CMP                                                       008413 R
+  7 XREG0TOS                                                       008425 R
+    XREG1                                                       =  000009 
+    XREG2                                                       =  00000A 
+    XREG3                                                       =  00000B 
+  7 XSTOR                                                          0085AE R
+  7 YCAT                                                           0082F1 R
+    YH                                                          =  007F06 
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 13.
+Hexadecimal [24-Bits]
+
+Symbol Table
+
+    YL                                                          =  007F07 
+  7 ZEQUAL                                                         00857B R
+  7 ZERO                                                           00837D R
+  7 ZL1                                                            008366 R
+  7 ZLESS                                                          008361 R
+  7 _EXTI0_IRQHandler                                              008149 GR
+  7 _EXTI1_IRQHandler                                              008149 GR
+  7 _EXTI2_IRQHandler                                              008149 GR
+  7 _EXTI3_IRQHandler                                              008149 GR
+  7 _EXTI4_IRQHandler                                              008149 GR
+  7 _EXTI5_IRQHandler                                              008149 GR
+  7 _EXTI6_IRQHandler                                              008149 GR
+  7 _EXTI7_IRQHandler                                              008149 GR
+  7 _TIM1_IRQHandler                                               008149 GR
+  7 _TIM2_IRQHandler                                               008149 GR
+  7 _TIM3_IRQHandler                                               008149 GR
+  7 _TIM4_IRQHandler                                               008149 GR
+  7 _forth                                                         008185 GR
+    lower                                                       =  00000F 
+    offset                                                      =  000010 
+    upper                                                       =  000018 
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (STMicroelectronics STM8), page 14.
+Hexadecimal [24-Bits]
+
+Area Table
+
+   0 _CODE                                      size      0   flags    0
+   1 DATA                                       size      0   flags    0
+   2 INITIALIZED                                size      0   flags    0
+   3 DABS                                       size      0   flags    8
+   4 DABS0                                      size      4   flags    8
+   5 DABS1                                      size     10   flags    8
+   6 DABS2                                      size      4   flags    8
+   7 DABS3                                      size    60B   flags    8
+   8 CODE                                       size      0   flags    0
+   9 INITIALIZER                                size      0   flags    0
+   A CABS                                       size      0   flags    8
+

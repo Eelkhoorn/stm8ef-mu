@@ -1,0 +1,116 @@
+loading timerf5-int, don't forget to flash the interrupt vectors!
+cr cr ." To chat, stop background task first: bgs" cr
+
+comment ===
+Part of p+ timer program for W1209-FD with MOC/TRIAC stage
+for swithing 230V AC
+These are the interrupt routines for port PD6 and timer1
+and initialisation, to be placed in boot vector
+===
+
+( Usage: see bottom. )
+
+__meta
+
+PA_ODR 3 2constant OUT
+flash
+
+CVAR 1tr		( first timer interrupt )
+CVAR 2tr		( second -or more- timer interrupt )
+
+: t1r  ( -- )			( tim1 reset )
+  [ 0 TIM1_CR1 0 ]B!	( stop timer )
+  [ 0 TIM1_SR1 0 ]B!	( reset interrupt flag )
+;
+
+: t1s [ 1 TIM1_CR1 0 ]B! ;		( tim1 enable )
+
+: SO  ( -- )	( reset flags after switch off, enable PD6 interrupt )
+   [ 0 OUT ]B! [ bdl? ]CLR [ 2tr ]CLR t1r [ 1 PD_CR2 6 ]B!
+;
+
+: PD6-int		( port D6 interrupt )
+   SAVEC
+   [ 0 PD_CR2 6 ]B!				( disable trigger )
+   [ bdl? ]C@ if					( second trigger: switch off after bounce delay )
+     [ $FF 2tr ]litC!
+     [ 0 OUT ]B! [ 0 TIM1_CNTRH ]lit!	( switch off and reset TIM1 counter )
+   else							( first trigger:  )
+     [ $3E12  TIM1_PSCRH ]lit! ( adjust time base)
+     [ $FF 1tr ]litC!
+     t1s
+   then
+   [ EE.BDL  TIM1_ARRH ]@!
+   IRET
+; -- ' PD6-int  INT_EXTI3 !flash				( set port D interrupt vector $8022 )
+
+: TIM1-int	( tim1 interrupt; retrigger timer for each second )
+   SAVEC
+   t1r
+   [ 2tr ]C@ [ PLS ]@ 0= OR if			( switch off in case of 2e trigger )
+     SO 
+   else							( first interrupt is after bounce delay )
+     [ $FF bdl? ]litC!
+     [ 1tr ]C@ if				( first timer interrupt )
+       [ #1000  TIM1_ARRH ]lit!		( 1 second )
+       [ PLS  sec ]@!
+       [ 1tr ]CLR 1 OUT! t1s
+       [ 1 PD_CR2 6 ]B!				( reenable port D trigger )
+     else						( next interrupts, counting seconds )
+       [ sec ]@ 1- if
+         [ sec ]DECW
+         t1s
+       else					( no more seconds, stop)
+         SO
+       then
+     then
+   then
+   [ TIM1_SR1 ]CLR
+   IRET
+; -- ' TIM1-int INT_TIM1 !flash					( SET TIM1 interrupt vector $8036 )
+
+: !BDL ( initialise bounce delay to 200 ms)
+      ULOCK [ $c8 EE.BDL ]lit! LOCK
+;
+: init
+   [ $B0 CLK_PCKENR1 ]litC! 		( tim1, tim2 -background ticker- and tim4 -uart-sim- enabled )
+   [ $3e  TIM1_PSCRH ]litC!			( 1 ms )
+   [ $12 TIM1_PSCRL ]litC!
+   [ M.START  m.ptr ]lit!				( point to the first menu item )
+   [ ' M0 m.level ]lit!
+   [ ' menu BGADDR ]lit!
+   [ 0 PD_DDR 6 ]B!				( PD6 as input pull-up with interrupt )
+   [ 1 PD_CR1 6 ]B!
+   [ 1 PD_CR2 6 ]B!
+   [ 1 TIM1_EGR 0 ]B!			( initialise TIM1 )
+   [ TIM1_SR1 ]CLR
+   [ 1 TIM1_IER 0 ]B!			( enable update interrupt )
+;
+
+ram
+
+__host
+
+-- flash interrupt verctors
+: fl-int
+   \t TIM1-int \m INT_TIM1 !flash
+   \t PD6-int  \m INT_EXTI3 !flash
+   \t init     \m 'BOOT     !flash
+;
+
+comment ===
+
+Shorting the thermometer connection switches ON and starts the timer.
+A second triggering switches OFF.
+
+Buttons: set, +, -
+
+set: change menu level
+		level 0: output (minutes and seconds)
+		level 1: choose variable to edit
+		level 2: +, - : change first digit
+				 set: go to next digit or go back to level 0.
+variables are hold in EEPROM: bounce delay	EE.BDL
+                              minutes		   EE.MIN
+                              seconds		   EE.SEC
+===

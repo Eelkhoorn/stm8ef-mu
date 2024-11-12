@@ -1,0 +1,73 @@
+--  Part of spotwelder, a timer program
+--  Sequence consists of bounce delay, pre weld pulse, pause and weld pulse.
+
+--  These are the interrupt routines for port PD3 and timer1
+--  and initialisation, to be placed in boot vector.
+
+flash
+__meta
+
+CVAR tr-n
+
+: *10us  ( n -- )				-- delay
+   1- for 
+     [ $A62B ,  $4A  c,  $26FD ,  ] 
+   next
+;
+
+: PD3-int		--  port D3 interrupt
+   SAVEC
+   [ 0 PD_CR2 3 ]B!				--  disable trigger
+   tr-n C@ if				--  second trigger
+      $FF C! 0 OUT!
+   then
+   EE.BDL @ TIM1_ARRH 2C! [ 1 TIM1_CR1 0 ]B!
+   IRET
+;  -- ' PD3-int INT_EXTI3 !flash										--  set port D interrupt vector $8022
+
+: TIM1-int											-- tim1 interrupt; retrigger timer for each second
+   SAVEC
+   5 tr-n C@ < if									-- 2e trigger or past main weld
+     0 OUT! [ 0 TIM1_CR1 0 ]B! 0 tr-n C!
+   else
+      tr-n C@ DUP 0= EE.PRE @ 0= NOT AND SWAP 4 = OR OUT!	-- switch on if tr-n is 4 or ( 0 and EE.PRE != 0)
+      EE.BDL tr-n DUP 2 OVER C@ + SWAP C!
+      C@ + @ DUP if
+         #10 * TIM1_ARRH 2C!
+      else
+         DROP [ 1 TIM1_EGR 0 ]B!					-- generate update event
+      then
+   then
+   [ 0 TIM1_SR1 0 ]B!
+   [ 1 PD_CR2 3 ]B!		-- reenable port D trigger
+   IRET
+;  -- ' TIM1-int INT_TIM1 !flash					-- SET TIM1 interrupt vector $8036
+
+: init
+   [ $B0 CLK_PCKENR1 ]C! 		-- tim1, tim2(background ticker) and tim4 (uart-sim) enabled
+   $3E12 TIM1_PSCRH 2C!			-- 1 ms
+   M.START m.ptr !				-- point to the first menu item
+   [ ' M0 ] literal m.level !
+   [ ' menu ] literal BG !
+   [ 0 PD_DDR 3 ]B!				-- PD3 as input pull-up with interrupt
+   [ 1 PD_CR1 3 ]B!
+   [ 1 PD_CR2 3 ]B!
+   [ 6 tr-n ]C!					-- set counter to end sequence
+   [ 1 TIM1_EGR 0 ]B!			-- generate update event
+   [ 1 TIM1_IER 0 ]B!			-- enable update interrupt
+;
+
+ram
+
+comment ===
+
+flash interrupt vectors:
+
+' PD6-int   INT_EXTI3 !flash
+' TIM1-int  INT_TIM1  !flash
+
+Initialise at boot:
+
+' init 'BOOT !flash
+
+===

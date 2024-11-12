@@ -1,0 +1,77 @@
+loading double heigth digits font 8X16
+
+hex
+
+-- font in eeprom if possible
+eeprom @eeprom #eeprom + \m here - "b0 < .if cr  ." font 8X16 in flash" flash .else cr  ." font 8X16 in eeprom" .then
+
+__meta
+
+here constant 8X16  
+
+-- 00 c, 00 c, 00 c, 00 c, 00 c, 00 c, 00 c, 00 c, 00 c, 30 c, 30 c, 00 c, 00 c, 00 c, 00 c, 00 c,  (  .)
+-- 00 c, 00 c, 00 c, 00 c, 80 c, 60 c, 18 c, 04 c, 00 c, 60 c, 18 c, 06 c, 01 c, 00 c, 00 c, 00 c,  (  /)
+00 c, E0 c, 10 c, 08 c, 08 c, 10 c, E0 c, 00 c, 00 c, 0F c, 10 c, 20 c, 20 c, 10 c, 0F c, 00 c,  (  0)
+00 c, 10 c, 10 c, F8 c, 00 c, 00 c, 00 c, 00 c, 00 c, 20 c, 20 c, 3F c, 20 c, 20 c, 00 c, 00 c,  (  1)
+00 c, 70 c, 08 c, 08 c, 08 c, 88 c, 70 c, 00 c, 00 c, 30 c, 28 c, 24 c, 22 c, 21 c, 30 c, 00 c,  (  2)
+00 c, 30 c, 08 c, 88 c, 88 c, 48 c, 30 c, 00 c, 00 c, 18 c, 20 c, 20 c, 20 c, 11 c, 0E c, 00 c,  (  3)
+00 c, 00 c, C0 c, 20 c, 10 c, F8 c, 00 c, 00 c, 00 c, 07 c, 04 c, 24 c, 24 c, 3F c, 24 c, 00 c,  (  4)
+00 c, F8 c, 08 c, 88 c, 88 c, 08 c, 08 c, 00 c, 00 c, 19 c, 21 c, 20 c, 20 c, 11 c, 0E c, 00 c,  (  5)
+00 c, E0 c, 10 c, 88 c, 88 c, 18 c, 00 c, 00 c, 00 c, 0F c, 11 c, 20 c, 20 c, 11 c, 0E c, 00 c,  (  6)
+00 c, 38 c, 08 c, 08 c, C8 c, 38 c, 08 c, 00 c, 00 c, 00 c, 00 c, 3F c, 00 c, 00 c, 00 c, 00 c,  (  7)
+00 c, 70 c, 88 c, 08 c, 08 c, 88 c, 70 c, 00 c, 00 c, 1C c, 22 c, 21 c, 21 c, 22 c, 1C c, 00 c,  (  8)
+00 c, E0 c, 10 c, 08 c, 08 c, 10 c, E0 c, 00 c, 00 c, 00 c, 31 c, 22 c, 22 c, 11 c, 0F c, 00 c,  (  9)
+00 c, 00 c, 00 c, 00 c, 00 c, 00 c, 00 c, 00 c, 01 c, 01 c, 01 c, 01 c, 01 c, 01 c, 01 c, 00 c,  (  -)
+
+flash
+
+.ifdef STM8L151K4
+VARIABLE COLROW
+
+: crh1 COLROW @ ;
+: crh2 $FF AND  ;
+
+: ROW ( --c)
+   crh1 crh2 ;
+: COL ( -- c)
+   crh1 EXG crh2 ;
+   
+: CP! ( column row -- ) SWAP $100 * + COLROW ! ;
+
+: PC! 2DUP CP! PC ;
+
+: PC@ ( -- col row) COL ROW ;
+
+: #ROW
+   COL #21 = if
+      0 ROW 1+ 
+      DUP 8 = if DROP 0  then PC!
+   then
+;
+
+: ->CP PC@ PC ;
+: COL+ $600 COLROW +! #ROW ;
+: ROW+ ROW 7 = if -7 else 1 then COLROW +! ;
+.then
+
+
+: h2d#  DUP 8 sb ROW+ ->CP 8 + 8 sb ;
+-- print digit at COLROW position
+: 2d# ( d) PC@ >R >R 10 * 8X16 + h2d# R> 8 + R>  PC! ;
+
+-- double font spaces
+: 2spc ( u)
+   DUP if
+      1- for "5500 h2d# "7FF COLROW +! ->CP next
+   else
+      DROP
+   then
+;
+
+-- print number, right justified, 4 digits + sign, #40 dots wide
+: 2n# ( n) DUP >R ABS n#h #count @ 4 OVER -  2spc R> 0< if 
+      "a 2d#  ( minus sign)
+   else
+      1 2spc
+   then 0 do 2d# loop
+;

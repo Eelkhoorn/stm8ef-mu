@@ -1,0 +1,49 @@
+.ifndef (SPI)
+
+-d (SPI)
+
+-- STM8S103 SPI
+-- derived from al177/stm8ef/HC12/boardcore.inc
+-- refer to github.com/TG9541/stm8ef/blob/master/LICENSE.md
+
+__meta
+flash
+-- Init and enable SPI
+: SPIon ( baud -- )
+  [
+    $5C c,              --  INCW    X         ; pull baud
+    $F6 c,              --  LD      A,(X)
+    $5C c,              --  INCW    X
+    $A407 ,             --  AND     A,#7      ; CPOL=CPHA=0
+    $4E c,              --  SWAP    A         ; 16 *
+    $47 c,              --  SRA     A         ; 2 /
+    $AA04 ,             --  OR      A,#4      ; set master mode
+    $C7 c, SPI_CR1 , ]  --  LD      SPI_CR1,A
+   [ 3 SPI_CR2 ]litC!      -- no NSS
+   [ 1 SPI_CR1 6 ]B!    -- SPI enable
+;
+
+-- disable SPI
+: SPIoff ( -- )
+  [ 0 SPI_CR1 ]litC!    -- disable SPI
+;
+
+-- Perform SPI byte cycle with result c
+: SPI ( c -- c)
+  [ $E601 ,                 -- LD A,(1,X)
+    $C7 c,  SPI_DR ,        -- LD SPI_DR,A
+    $7201 , SPI_SR , $FB c, -- BTJF SPI_SR,#SPIRXNE_WAIT (0)
+    $C6 c,  SPI_DR ,        -- LD A,SPI_DR
+    $E701 ,                 -- LD (1,X),A
+    $7F c, ]                -- CLR  (X)
+;
+
+comment ===
+STM8L needs:
+    [ 1 CLK_PCKENR1 4 ]B!
+	[ $E0 PB_DDR ]litC!    -- MOSI, MISO, CLK
+	[ $E0 PB_CR1 ]litC!
+
+===
+
+.then

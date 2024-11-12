@@ -1,0 +1,154 @@
+.ifndef (I2ISR) 
+loading work/Nuvoton/I2ISR
+-d (I2ISR)
+hex 
+
+comment ===
+Interrupt service routine for I2C
+user flag F0 (PSW .5) is used as switch for ROM/XRAM writes: 1 -> ROM
+Uses IRAM addresses a - 12
+===
+
+assembler
+: I2CPX \m I2CON \a .0 ;
+: AA \m I2CON \a .2  ;
+: SI \m I2CON \a .3   ;
+: STO \m I2CON \a .4   ;
+: STA \m I2CON \a .5   ;
+: I2CEN \m I2CON \a .6  ; 
+
+__meta
+
+forth  ( 1 byte addresses)
+"a  constant SLA_ADDR    ( slave address sll)
+"b  constant CMDCOUNT    ( number of command bytes to transmit)
+"c  constant TXCOUNT     ( number of bytes to transmit)
+"d  constant RXCOUNT     ( number of bytes to receive)
+"e  constant CMDPOINT    ( 1 byte pointer to command bytes )
+"f  constant TXPOINT     ( pointer to transmit bytes)
+"11 constant RXPOINT     ( pointer to receive bytes)
+meta
+
+label i2c-end
+   SI clr
+   ( nop nop ) 09 # r7 mov  ( byte for do-command)
+   PSW pop ACC pop 
+   reti ;c
+
+label i2c-int ( uses regs "a - "14)
+--    IE .7 clr
+   ACC push PSW push PSW "18 mclr          ( switch to reg bank 0)
+-- Master Mode 
+   I2STAT a mov  ( r2 1 mov a @r1 mov r2 inc  ; for debugging only)  
+label i2c-00
+   0 # a = if                          ( bus error)
+      STO setb lx call
+   i2c-end j then
+label i2c-08
+   8 # a = if                          ( START transmitted)
+      STA clr
+      CMDCOUNT a mov TXCOUNT a orl 0= if
+label start-rx
+         SLA_ADDR inc then               ( set R bit )
+      SLA_ADDR  I2DAT mov 
+   i2c-end j then
+label i2c-10
+   "10 # a = if                        ( repeated START transmitted)
+      STA clr
+   start-rx j then                     ( start receiver mode)
+-- Master Transmitter Mode 
+label i2c-18
+   "18 # a = if
+      never if  >r                      ( SLA+W transmitted, ACK received)
+   then
+label i2c-20
+   "20  # a = if                       ( SLA+W transmitted, NACK received)
+      STO setb
+      nop nop ( STA setb)
+   i2c-end j then
+label i2c-28
+   "28 # a = if                        ( DATA transmitted, ACK received)
+      AA setb
+   r>  then
+label send-data
+      CMDCOUNT a mov 0!= if
+         CMDCOUNT dec CMDPOINT 1 mov @r1 a movx a I2DAT mov
+         CMDPOINT inc i2c-end j then
+      TXCOUNT  a mov 0= if              ( no more DATA to be sent)
+         RXCOUNT a mov 0!= if          ( repeated start: start reading)
+            STA setb i2c-end j then
+         STO setb i2c-end j then 
+      DPH push DPL push                ( continuing to send DATA)
+      TXPOINT DPH mov [ TXPOINT 1+ ]a DPL mov
+      PSW .5 bset? if                  ( user flag 0 to choose between ROM and XRAM)
+         a clr @a+dptr a movc a I2DAT mov
+      else
+         @dptr a movx a I2DAT mov
+      then
+      dptr inc DPH TXPOINT mov DPL [ TXPOINT 1+ ]a mov
+      TXCOUNT dec DPL pop DPH pop
+   i2c-end j then     
+label i2c-30
+   "30 # a = if                        ( DATA transmitted, NACK received)
+      STO setb
+      AA setb
+   i2c-end j then
+-- Master Mode 
+label i2c-38
+   "38 # a = if                        ( arbitration lost)
+      STA setb
+   	 i2c-end j then
+-- Master Receiver Mode 
+label i2c-40
+   "40 # a = if                        ( SLA+R transmitted, ACK received)
+      RXCOUNT  a mov 1 # a = if         ( no data to be received)
+         AA clr i2c-end j then
+      AA setb
+   	i2c-end j then
+label i2c-48
+   "48 # a = if                        ( SLA+R transmitted, NACK received)
+      STO setb
+      AA setb
+   	 i2c-end j then
+label i2c-50
+   "50 # a = if                        ( DATA received, ACK transmitted)
+      RXCOUNT dec 
+      RXCOUNT  a mov 1 # a = if         ( last DATA will be received)
+         AA clr
+      else                             ( continuing receiving DATA)
+         AA setb 
+      then 
+label receive-data
+      DPH push DPL push   
+      RXPOINT DPH mov [ RXPOINT 1+ ]a DPL mov
+      I2DAT a mov  a @dptr movx
+      dptr inc DPH RXPOINT mov DPL [ RXPOINT 1+ ]a mov
+      DPL pop DPH pop
+      i2c-end j then
+label i2c-58
+   "58 # a = if                    ( DATA received, NACK transmitted)
+      STO setb 
+      AA setb
+   receive-data j then
+label i2c-a0
+   "a0 # a = if                     ( STOP or repeated START received while still addressed SLAVE mode)
+      AA setb
+   i2c-end j then            ( )
+   reti ;c
+
+here  INT_I2C goto __asm i2c-int j ;c goto
+
+label (I2S)       ( start I2C transaction)
+: I2S ( a --)
+   2* a[ "40 # I2CON mov DPL SLA_ADDR mov ] DROP
+   a[ STA setb begin STO bset? until  ] ;
+
+-- initialise I2C
+: I2I0   ( P1.3 and P1.4 open drain, high, enable I2C, set interrupt priority)
+   a[ TXCOUNT rclr RXCOUNT rclr
+   "18 # P1M2 orl "18 # P1 orl I2CEN setb EIP 0 rsetb ] ;
+: I2I I2I0 a[ EIE 0 rsetb ] ;
+: I2ST 0 a[ I2STAT DPL mov I2CON DPH mov ] ;    ( status: I2CON:I2STAT)
+: I2D a[ "fe # EIE anl ] ;
+
+.then

@@ -1,0 +1,324 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+( Fiddle around with the console/terminal colors.)
+
+ld lib/ansi-terminal-colors.mu4
+
+
+( Room for 16 colors, plus a few extra: for cursor, selection, etc)
+
+( XXX put the fg, bg, cursor, and selection colors in slots 16 to 19. Then
+| it's possible to print them out if the color scheme - eg, for Windows
+| Terminal - supports them.
+|
+| Do we want to default these to something? Problem is, they depend on
+| whether the scheme is dark or light.)
+
+24 array+ palette
+
+( Indices for the "extra" color values.)
+16 constant foreground
+17 constant background
+18 constant cursor
+19 constant selection-bg
+
+( XXX Do we still need/want these? They used to be complicated, since the
+| palette *was* an array 3-byte values. Now it's just an array of cells.)
+: pal!  ( rgb n)     palette ! ;
+: pal@  ( n - rgb)   palette @ ;
+
+( Storing a sequence of colors into the palette.
+| n is starting index; m is count.)
+: palette!  ( rgb<n> .. rgb<n+m-1> n m)   over + 1- do  i pal!  -1 +loop ;
+
+( Generate a new palette, using a simple technique to "whiten" colors.)
+( Four byte values: floor ceil +floor +ceil)
+variable component
+   "dd77_aa55 component !  ( Little-endian hack!)
+   -- "dd77_aa44 component !  ( Little-endian hack!)
+
+: comp@  ( 'component exists - color 'component)
+   over swap if  1+  then  c@  swap ;
+
+: gen-rgb  ( i - rgb)
+   push  component
+   r@ 8 and if  2 +  then  ( use "bright" versions)
+   r@ 4 and comp@ ( blue)
+   r@ 2 and comp@ ( green)
+   pop 1 and comp@ ( red)
+   drop  ( b g r)  lohi> lohi> ;
+
+( Generate a new palette.)
+( XXX We don't always want black to be #000000, but let's default to that
+| for now.)
+
+: gen
+   ( black is special)     0  0 pal!
+   16 1 do  i gen-rgb  i pal!  loop
+   red pal@  cursor pal! ( I'm enjoying having a *very* visible cursor!) ;
+
+
+( .fg reads the color from our palette table at a particular index, and
+| sets it as the current foreground using a "truecolor" escape sequence.)
+
+: .fg  ( color#)
+   pal@ ( rgb)  0 ( -bright) 30 ( fg) rot  (ansi-rgb-color) type ;
+
+: normal  ." [0m" ;
+
+( Show all colors.)
+: bright  ( color# - brightcolor#)  8 + ;
+: .color  ( n)  dup .fg  7 and  char 0 + dup emit emit ;  ( double digit)
+: cc  normal  16 0 do  i .color  loop  normal ;
+
+( Test "close" colors. These pairs - red + magenta, green + cyan, yellow +
+| white - all differ in that one has a blue component, and the other lacks
+| blue. For good measure, I put the two pure blues in there as well.)
+
+: tt
+   normal
+   cr    red .fg  ."  red "    magenta .fg  ."  magenta "
+       green .fg  ."  green "     cyan .fg  ."  cyan "   blue .fg  ."  blue "
+      yellow .fg  ."  yellow "   white .fg  ."  white"
+   cr   red bright .fg  ." +red "   magenta bright .fg  ." +magenta "
+      green bright .fg  ." +green "    cyan bright .fg  ." +cyan "
+       blue bright .fg  ." +blue "   yellow bright .fg  ." +yellow "
+      white bright .fg  ." +white"
+   normal ;
+
+
+( cube666 shows the 6x6x6 color cube that exists inside the "standard set"
+| of 256 colors, which are organized as follows:
+|
+| * the first 16 are the "ansi" palette;
+| * the next 216 are the 6x6x6 cube;
+| * the last  24 are a greyscale ramp.
+|
+| cube666 only prints the 216 colors that are part of the color cube.
+|
+| NOTE: this requires a 256-color-capable terminal or emulator.)
+
+: .ansi256  ( color#)  0 ( -bright) 30 ( fg) rot  (ansi-256-color) type ;
+
+: cube666
+   radix preserve  6 radix !  ( base 6!!)
+   normal  6 0 do  cr  6 0 do  cr  6 0 do
+      k  6 *  j +   6 *  i +  dup  16 + .ansi256  ( set color)
+      <#  # # #  #> type space  ( print color number)
+   loop  loop  loop  normal ;
+
+( Print the greyscale ramp subset of the 256-color space.)
+: grey24
+   normal  cr  24 0 do
+      i [ 16  6 6 6 * *  + #] + .ansi256  ( set color)
+      i <#  # #  #> type space  ( print color number)
+   loop  normal ;
+
+( What about a 16x16x16 cube? We need to use truecolor escape sequences to
+| print this, so it will look terrible if your console or terminal emulator
+| does not understand these sequences.)
+
+: .true  ( b g r)  lohi> lohi> ( rgb)
+   0 ( -bright) 30 ( fg) rot  (ansi-rgb-color) type ;
+
+: cube-true
+   radix preserve  hex
+   normal  16 0 do  cr  16 0 do  cr  16 0 do
+      i 16 *  j 16 *   k 16 *  ( b g r)  .true  ( set color)
+      k 16 *  j +   16 *  i +   <#  # # #  #> type space  ( print color number)
+   loop  loop  loop  normal ;
+
+( Print the 16-color greyscale "diagonal" of the above cube.)
+: grey-true
+   radix preserve  hex
+   normal  cr  16 0 do
+      i 16 *  dup dup ( b g r)  .true  ( set color)
+      i 16 *  i +  16 *  i +   <#  # # #  #> type space  ( print color number)
+   loop  normal ;
+
+
+( Exporting palettes in textual form.)
+
+compiler  ( We want to print a string with embedded " chars.)
+: .string   \ (")  \f char parse scrabble  drop  \ type ;
+forth
+( Create a string containing the hex RRGGBB value.)
+: (rgb)   ( n - a u)  pal@  ( rgb)
+   radix preserve hex  <#  # # # # # #  #> ;
+
+: .rgb   ( n)  (rgb) type ;
+: .rgb_  ( n)  .rgb space ;
+
+( Export a palette so we can use set-console-colors to set it.)
+: export-linux
+   out-channel preserve  >stdout
+   .string }
+# Put this into your .bash_login or .profile.
+
+# If we are on a Linux console, set the colors to something decent.
+if [ "$TERM" = "linux" ]; then
+    # Sequence (+color is bright) is:
+    # black red green yellow blue magenta cyan white
+    # grey +red +green +yellow +blue +magenta +cyan +white
+
+    ~/set-console-colors \
+        }
+    8 0 do  i .rgb_  loop  ." \
+        "
+   16 8 do  i .rgb_  loop  ."
+
+fi
+"  ;
+
+( HTML-style RGB color.)
+: (#rgb)   ( n - a u)  (rgb) 2drop  char # hold  0 #> ;
+: #rgb   ( n)  (#rgb) type ;
+: #rgb_  ( n)  #rgb space ;
+
+( Export a palette suitable for inclusion on nimblemachines.com.)
+: export-nm
+   out-channel preserve  >stdout
+    8 0 do  i #rgb_  loop  cr
+   16 8 do  i #rgb_  loop  cr ;
+
+( Quoted HTML-style RGB color for JS array.)
+: .quoted  ( a u)  char " emit  type  char " emit ;
+: "#rgb"   ( n)  (#rgb) .quoted ;
+: ,_   ." , " ;
+: :_   ." : " ;
+
+( Export a palette to use with the ChromeOS terminal emulator, hterm. It
+| needs to be in the format of a Javascript array with quoted RGB colors.)
+: export-hterm
+   out-channel preserve  >stdout
+   cr  ." [ "
+    8 0 do  i "#rgb" ,_  loop  cr
+   15 8 do  i "#rgb" ,_  loop
+           15 "#rgb"  ."  ]"  cr ;
+
+( Export to Microsoft's Windows Terminal. Format is JSON, but the colors
+| all have *names*, as does the color scheme. The nice thing is that this
+| lets us define a cursor color too.
+|
+| Here's an example color scheme. By default the "keys" are ordered
+| alphabetically. I've re-ordered them to make more sense. The "metadata"
+| comes first, followed by the colors, in ANSI order. Curiously, they are
+| calling magenta "purple".
+|
+|  {
+|     "name": "One Half Dark",
+|     "foreground": "#DCDFE4",
+|     "background": "#000000",
+|     "cursorColor": "#FFFFFF",
+|     "selectionBackground": "#FFFFFF",
+|
+|     "black": "#282C34",
+|     "red": "#E06C75",
+|     "green": "#98C379",
+|     "yellow": "#E5C07B",
+|     "blue": "#61AFEF",
+|     "purple": "#C678DD",
+|     "cyan": "#56B6C2",
+|     "white": "#DCDFE4",
+|
+|     "brightBlack": "#8996B0",
+|     "brightRed": "#E06C75",
+|     "brightGreen": "#98C379",
+|     "brightYellow": "#E5C07B",
+|     "brightBlue": "#61AFEF",
+|     "brightPurple": "#C678DD",
+|     "brightCyan": "#56B6C2",
+|     "brightWhite": "#DCDFE4"
+|  }
+)
+: json-color-name  ( n - a u)
+   dup  8 u< if
+      6 *  z" black red   green yellowblue  purplecyan  white " +  6 -trailing ^
+   then
+   <#  ( misuse pictured numeric area)
+   8 -  6 *  z" Black Red   Green YellowBlue  PurpleCyan  White " +  6 -trailing
+   "hold  " bright" "hold  0 #> ;
+
+( Start another line of JSON data.)
+: >>json  cr 12 spaces ;
+
+( Given a color index and name, print a JSON entry.)
+: .json-color ( n a u)
+   >>json  .quoted  :_  "#rgb" ;
+
+: .json-palette-color  ( n)
+   dup json-color-name  .json-color ;
+
+: .json-palette
+   15 0 do  i .json-palette-color  ,_  loop
+           15 .json-palette-color ;
+
+( testing)
+: jj  16 0 do  cr i u. i json-color-name type  loop ;
+
+: export-windows-term  ( fg bg cursor selection)
+   cr  ."         {"
+   >>json  " name" .quoted  :_  token ( name) .quoted ,_
+   foreground    " foreground"           .json-color ,_
+   background    " background"           .json-color ,_
+   cursor        " cursorColor"          .json-color ,_
+   selection-bg  " selectionBackground"  .json-color ,_
+   .json-palette
+   cr  ."         }," ;
+
+
+( Color schemes.)
+
+hex
+
+( Based on Monokai from base16 collection - https://github.com/chriskempson/base16
+| I got them from asciinema, who borrowed from above URL.)
+
+: monokai
+   272822 f92672 a6e22e f4bf75 66d9ef ae81ff a1efe4 f8f8f2
+   75715e f92672 a6e22e f4bf75 66d9ef ae81ff a1efe4 f9f8f5
+   0 #16 palette!
+   red pal@  cursor pal! ;
+
+( Solarized!
+|
+| color: #839496;
+| background-color: #002b36;
+|
+| NOTE: the background color cannot be set using ANSI 16-color sequences
+| because it is *not* one of the first 8 colors! Not sure what Ethan S was
+| thinking ...
+)
+: solarized-original
+   073642 dc322f 859900 b58900 268bd2 d33682 2aa198 eee8d5
+   002b36 cb4b16 586e75 657b83 839496 6c71c4 93a1a1 fdf6e3  0 #16 palette! ;
+
+( Copied over from Comonad, an iMac. I came up with this by futzing with
+| the color settings in the Terminal app.)
+
+( Highlight/cursor: EEAB3B ( yellow/goldenrod)
+: comonad
+   2E2E2E  9F2138  8DA61F  B29249  555CA9  99619B  678C96  D2D2D2
+   2E2E2E  9F2138  8DA61F  B29249  555CA9  99619B  678C96  D2D2D2
+   0 #16 palette!                                          ( ^-should be 88% grey)
+   red pal@  cursor pal! ;
+
+: g  ( make a color greyer/whiter)  181818 + ;
+: comonad-greyer
+   2E2E2E  9F2138 g  8DA61F g  B29249 g  555CA9 g g  99619B g  678C96 g  D2D2D2
+   2E2E2E  9F2138 g  8DA61F g  B29249 g  555CA9 g g  99619B g  678C96 g  D2D2D2
+   0 #16 palette!                                                        ( ^-should be 88% grey)
+   red pal@  cursor pal! ;
+
+( It's not clear to me that the selectionBackground color in Windows
+| Terminal really *works*. Let's just set it to the cursor color.)
+
+: set-fgbg  ( fg bg)  background pal!  foreground pal!  cursor pal@  selection-bg pal! ;
+
+( For dark schemes use white as fg, black as bg. Switch them for light schemes.)
+: dark   white pal@  black pal@  set-fgbg ;
+: light  black pal@  white pal@  set-fgbg ;
+
+decimal

@@ -1,0 +1,372 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+
+
+loading N76E003 Meta-compiler (main)
+
+( Make it easy to check if a device register has been defined. If device
+  equates move to somewhere other than .equates. update this too.)
+compiler
+: .reg   .equates. \ .contains ;
+forth
+: .reg   \ .reg ;
+
+-- ------------------------------------------------------------------------
+-- Peephole optimiser tags
+-- ------------------------------------------------------------------------
+
+( Tags tell the meta-compiler what kind of special code, if any, was just
+  compiled. Currently used to identify literals and calls, for simple
+  peephole optimisations.
+
+  We store the tag byte at \m here. No tag is represented by an "empty"
+  image byte - 0ff - _not_ by a tag of zero.)
+
+( Tags used:)
+  1 constant $lit    ( $ suggests price tag ;-)
+
+
+: acall? ( $bsr --$jsr f)
+   dup dup "10 - -rot  "f and 1 = if "f0 and "10 / 2 mod then 1 = ;
+: lcall? ( $bsr --$jsr f)
+   dup "12 = if drop 2 -1 ^ then 0 ;  
+
+: tag!  ( tag)     \m here image-c! ;
+: tag@  ( - tag)   \m here image-c@ ;
+: notag  "ff tag! ;
+
+( We also want to cleanly uncompile code, so instead of simply backing up
+  and leaving the cruft - instructions and tags - behind, let's back up and
+  "uncompile" the code, leaving behind untagged code.)
+
+: uncompile  ( #bytes)
+   \m here  over -  dup \m goto image+  swap ( #bytes)  1+ ( include tag)  "ff fill ;
+meta
+:  ]   __target-colon  notag ;
+
+( These are pointers to target kernel words.)
+variable (dolit)
+variable (?branch)
+variable (>R)
+variable (R>)
+variable (donext1)
+variable (donext)
+variable (SWAP)
+variable (DROP)
+variable (2DROP)
+variable (DUP)
+variable (FOR1)
+variable (+LOOP1)
+variable (LOOP1)
+variable (LOOP)
+variable (LLOOP)
+variable (++LOOP)
+variable (+LOOP)
+variable (1)
+-- variable (dovar)
+-- variable (dovarptr)
+variable (DO1)
+variable (DO)
+variable (NEXT)
+
+: compile,  ( target-cfa)  \m here swap  \a call ( compile call)  image-c@ tag! ;
+forth
+
+: replace  ( jsr-op jmp-op  -- -1)
+   \m here + image-c!    notag  -1 ;
+
+( If last code compiled was a call, rewrite it to a jump and return true;
+  else return false.)
+
+: tail?  ( - f)
+   tag@
+     acall? if   -2 replace    ^  then 
+     lcall? if   -3 replace    ^  then 
+   drop  0 ;
+
+target-compiler
+: ^   tail? if ^ then  "22 \m c, ( asm{  ret }) ;
+
+forth
+: lit?   ( - lit?)  tag@ $lit =  dup if  4 uncompile  then ;
+
+: [r]   ( mark as "runtime"; move last .target. word into .target-runtime.)
+   .target. @  dup @  ( last prev)  .target. !  ( unlink)
+   .target-runtime. @  ( last last-runtime)  over .target-runtime. !
+   swap ! ( link our new word to last-runtime) ;
+
+: [var]    ( move last .meta. word into .variables.)
+   .meta. @ dup  @ .meta. ! 
+   .variables. @ over .variables. !
+   swap !
+;
+
+( Look up a label or forward-reference variable, and execute it to push
+  its value or address.)
+forth
+: lookup
+   .meta. chain' execute ;
+
+: implements   \m here  lookup  ! ;
+
+( Compile a cfa into a target colon word.)
+
+( Fetch value of variable - a primitive - and complain if not yet defined.)
+: (p@)  ( var)  @  =if  ^  then  error" primitive not yet defined" ;
+
+( Fetch primitive and compile into target.)
+: (p,)  ( var)  (p@)  \m compile, ;
+
+variable saved-state  ( so we know which colon compiler to return to.)
+compiler
+: p,   .meta. \chain  compile (p,) ;
+: p@   .meta. \chain  compile (p@) ;
+meta
+
+: literal  p, (DUP) "90 \m c, \m , ;   ( mov dptr #data) 
+: #] \m ] \m literal ;
+: label   \m here  current preserve meta constant  __asm ;
+: name    \m here  current preserve  target constant ;
+: :   flash   \m name  __target-colon ;
+: '  .target. chain' execute ;  ( target words are constants!)
+: __host  \ [ ;  ( return to host forth mode)
+: {    \m __host ;  ( useful for bracketing a few  host forth words)
+: constant constant ;
+assembler
+: ;c __meta ;
+: [ \c [ ;
+: ] \m ] ;
+: { \m __host ;
+forth
+: }    __meta ;  ( return to meta)
+: }a  __asm ;
+: ]a __asm ;
+
+target-compiler
+: [   __meta ;
+: a[ __asm ;
+: ;   \tc ^  \tc [ ;  ( return to meta)
+
+definer
+: ;                    \c ;  __meta ;  ( do normal host ; , return to __meta)
+: ;d    compile \tc ;  \c ;  __meta ;  ( compile RET, do normal host ; , return to __meta)
+: ( \f ( ;
+: [ __meta ;
+: a{{ state @ saved-state ! __inline-asm ;
+: p,  \c p, ;
+
+compiler
+: }} saved-state @ state ! ;
+meta
+: m:             current preserve  meta   :  __definer-colon ;
+: c:  current preserve  target-compiler   :  __definer-colon ;
+: d:          current preserve  definer   :  __definer-colon ;
+
+forth
+variable leave?
+-- return stack primitive are coded inline
+__meta
+
+d: R>DROP  ( -- )   
+   a{{ SP dec SP dec }} ;
+d: >R  ( u -- )   
+   a{{ DPL push DPH push }}  p, (DROP) ;
+d: R>  ( -- u )   
+   p, (DUP) a{{ DPH pop DPL pop }}  ;
+d: R@ ( -- u )   
+    p, (DUP) a{{ DPH pop DPL pop SP inc SP inc }} ;
+d: DUP>R  ( n -- n )   
+   a{{ DPL push DPH push }} ;
+
+-- d: for1 a{{ DPL r4 mov r4 inc }} p, (DROP) ;
+d: next1 a{{ r4 dec r4 a mov  a inc 0= until 4 pop }} ;
+d: for a{{ DPH r4 mov DPL r5 mov }} p, (DROP) ;
+-- d: incr a{{ \f dup \f 1+ dup inc a mov 0= if \f swap  inc then }} ; 
+__host
+
+definer
+-- : I \d R@ ;
+meta
+
+: fill   ( a u c) dp preserve rot \m goto swap for dup \m c, next drop ;
+: fillw  ( a u w) dp preserve rot \m goto swap for dup \m  , next drop ;
+
+-- ------------------------------------------------------------------------
+-- Control structures.
+-- ------------------------------------------------------------------------
+
+( Resolve a forward or backward jump, from src to dest.)
+( When using absolute branch addresses, this is easy: just store dest at src.)
+
+: <resolve  ( dest src)  image-! notag ;
+: >resolve  ( src dest)  swap  \m <resolve ;
+: mark      ( - src)     \m here  "dead \m , ;
+
+target-compiler
+: if    ( - src)     p,  (?branch)  2 \m c, \m mark p, (DROP) ;
+: then  ( src)          \m here \m >resolve  ;
+: else  ( src0 - src1)  ( p,   branch) 2 \m c, ( ljmp)  \m mark  swap  \tc then ;
+: begin   ( - dest)  \m here ;
+: until   ( dest -)  \tc  if  \m <resolve ;
+: again   ( dest -)  ( p, branch) 2 \m c, ( ljmp) \m mark  \m <resolve ;
+: while   ( dest - src dest)  \tc  if  swap ;
+: repeat  ( src dest -)   \tc again  \tc then ;
+: for    \d >R \tc begin ;
+: next p, (NEXT) \m mark \m <resolve ;
+: do     ( limmit index) p, (DO) \tc begin ;
+: loop  p, (LOOP) \m mark \m <resolve ;
+: +loop  p, (+LOOP) \m mark \m <resolve ;
+-- small loops, 1 byte count
+-- : for1     ( - src dest) \d for1  \a begin  ;
+: for1    p, (FOR1) \a begin ;
+: next1    ( dest -)     \d next1  ;
+: do1     p, (DO1) \a begin ;
+: +loop1  p, (+LOOP1) \a 0= \a until 4 \a pop  ; 
+: loop1    ( dest)     p, (LOOP1)  \a 0= \a until 4 \a pop  ; 
+
+comment ===
+: for     ( - src dest) \d for \a begin ;
+: next    ( dest -)   p, (donext) \a 0= \a until ;
+: ddo    ( limit index --) p, (SWAP) \d >R \d >R  \tc begin ;
+: do      p, (DO)     \a begin ;
+: loop    p, (LOOP)   \a 0!= \a until ;
+: +loop   p, (+LOOP)  \a 0!= \a until ;
+: leave   \a ret ;
+===
+
+-- push literal on the stack
+: literal \m literal ;
+
+-- compile xt as a literal
+: [']        \m '  \m literal ;
+
+: , \m , ;
+
+-- ------------------------------------------------------------------------
+-- Special versions of host colon compiler
+-- ------------------------------------------------------------------------
+
+( Define useful colon compilers:
+      meta:  for defining new target defining words!
+   definer:  for defining meta-compiler-specific compiling words
+
+  We will define another colon compiler - the actual target colon - in the
+  kernel, using our meta-defining words!)
+
+( We need meta: so we can define defining words in the middle of target
+  code - eg, the kernel. It gives us an easy way to fire up a specific
+  colon compiler - the one specifically *tuned* for making target defining
+  words.
+
+  definer: is similar. It runs the same colon compiler as meta: but puts
+  the new word on the .definer. chain. Its use is rather obscure, and hard to
+  explain. ;-)
+
+
+-- : create meta create  ;
+
+target-compiler
+
+: \ .target-compiler. token' if , ^ then .target-runtime. find huh? literal ['] , , ;
+: \m .meta. \chain ;
+
+forth
+
+( Patch target colon compiler.)
+.meta. chain' literal   is target-literal
+             ' number   is target-number    ( use host's number)
+.meta. chain' compile,  is target-compile,
+
+comment ===
+
+variable ram-pointer
+variable flash-pointer
+variable eeprom-pointer
+: ram ram-pointer @ h ! ;
+: flash flash-pointer @ h ! ;
+: eeprom eeprom-pointer @ h ! ;
+===
+: flash?
+    h preserve
+    h @ flash dp = ;
+
+meta
+: allotr  ( allot ram while in flash)
+--   flash? if xram \m allot flash else \m allot then ;
+   h preserve xram \m allot ;
+
+-- : +! ( u a) dup \m @ rot \f + swap \m ! ;
+
+
+forth
+: comp? state @ @ comp = ;
+
+meta
+comment ===
+: VARIABLE
+   h preserve meta create
+   \m here ,
+   xram \m here dup , 0 \m , flash \m literal \a ret
+  [var]
+   does>
+      2@ comp? if nip \a call else drop  then ;
+
+-- byte variable
+: CVAR
+   h preserve meta create
+   \m here ,
+   xram \m here dup , 0 \m c, flash  \m literal
+  [var]
+   does>
+      2@ comp? if nip \a call else drop  then
+;
+===
+
+: VARIABLE
+   h preserve meta xram \m here  0 \m , \m constant ;
+: CVAR
+   h preserve meta xram \m here  0 \m c, \m constant ;
+   
+: 2VARIABLE \m VARIABLE \f 2 \m allotr ;
+
+comment ===
+__meta
+-- + for byte sized literals. Caution: the result can't exceed $FF !
+d: ]lit+ ( c --)
+	] $E601 , $AB c, c, $E701 ,
+;
+
+__host
+
+forth
+
+-- get address of last defined target word
+: '-last
+	.target. @ cell+ cell+ cell+ ;
+
+
+-- Create/does>
+meta
+: does> \m here dup '-last ! 2 - \m literal  ;   ( patch cfa of last created target word, put last compiled address on the stack)
+: create \m name ;
+
+-- example: __building d: 2CONSTANT , , does> DUP @ SWAP 2- @ ;d
+-- 			AAAA BBBB 2CONSTANT PP
+
+
+===
+
+compiler
+: asm{{   state @  saved-state !  __inline-asm ;  ( start assembler)
+-- : }}      saved-state @  state !  ;  ( exit assembler mode and restart colon compiler)
+: ]] \m ] ;
+
+assembler
+-- Timed Acces Procedure
+: ta "aa \a # \m TA \a mov "55 \a # \m TA \a mov ;
+-- : savec "e0 \a push 0 \a push \m DPL \a push \m DPH \a push  ;
+-- : iret \m DPH \a pop \m DPL \a pop 0 \a pop "e0 \a pop \a reti ;
+
+forth
+-- : si save-image /tmp/flash.bin ;

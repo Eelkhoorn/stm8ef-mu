@@ -1,0 +1,10 @@
+#!/bin/bash
+# make symlink to serial USB interface 
+dir=$(pwd)
+declare -i a
+for i in serial-target* ; do [[ -h $i ]] && rm $i ; done
+for i in /dev/ttyUSB*; do  a+=1; [[ -e $i ]] && ln -s $i serial-target$a  ; done
+[[ -e serial-target1 ]] && ls serial-target*
+[[ ! -e serial-target1 ]] && { echo "no /dev/ttyUSB device found" ; exit ; }
+"$dir"/../src/muforth "$@"
+

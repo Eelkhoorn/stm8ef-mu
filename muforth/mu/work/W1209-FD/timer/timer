@@ -1,0 +1,220 @@
+loading (PCB timer4f, using fast variable words)
+-- Menu to set Minutes, Seconds or bounce delay
+-- Three buttons: Set, Plus and Minus
+-- Set button changes menu item and digit
+-- Display M.SS, MM.S or MMM.
+
+forth
+
+-d W1209-FD
+
+ld target/STM8/W1209-FD.mu4
+
+ld aliases
+
+-- key constants (A, B, D)
+   65 constant KEY.SET
+   66 constant KEY.PLUS
+   68 constant KEY.MINUS
+
+$4000 constant EE.MIN
+$4002 constant EE.SEC
+$4004 constant EE.BDL  ( bounce delay )
+-- $4006 constant EE.ADJ
+
+variable ptr1
+
+__meta
+
+flash
+
+VARIABLE m.level  -- pointer to menu level M0 .. M2
+VARIABLE m.val    -- address of parameter value in level 2, EE.MIN, EE.SEC or EE.BDL
+VARIABLE m.ptr    -- current menu
+VARIABLE m.disp   -- last display value
+VARIABLE m.tim    -- backgrnd tick counter
+VARIABLE sec      -- seconds counter
+CVAR bdl?    -- past bounce delay
+CVAR led#
+VARIABLE PLS
+
+-- number display on 3 7-segment LED tubes
+: split
+   #10  /MOD  ;
+: print3
+   2  for1 $30  + E7S next1 ;
+: . ( n) split split print3 ;
+
+: 1. [ 1 2 LED7FIRST + 7 ]B! ;
+: 2. [ 1 1 LED7FIRST + 7 ]B! ;
+: 3. [ 1 LED7FIRST 7 ]B! ;
+: Xh ( n n --) 0  #60  UM/MOD ROT * ;
+: X.XX  #100  SWAP Xh + . 3. ;
+: XX.X  #10  SWAP Xh SWAP #10  / + . 2. ;
+: XXX. 1  SWAP Xh FNIP . 1. ;
+: .. ( n --)                  -- display number
+	#5999  OVER U< if
+		XXX.
+	else
+		#599  OVER < if
+			XX.X
+		else
+			X.XX
+		then
+	then
+;
+
+-- display 3 chars at address
+: .menu 2  for1 DUP i1 + FC@ P7S next1 DROP ;
+
+: M. ( n -- )
+  -- lazy .. : print number only if value has changed
+   DUP [ m.disp ]@ = NOT if
+     DUP [ m.disp ]! DUP ..
+   else DROP then
+;
+
+: 10^ ( n1 n2 -- n3)  -- n3 = n1 * 10^n2 | n3 = n1 if n2 > 0
+   DUP DUP
+   0< 0= if
+     0= if
+       DROP 
+     else
+       0 do1 #10  * loop1
+     then 
+   else
+     2DROP
+   then
+;
+
+: h2	-- helper word for incd and decrd
+   [ led# ]C@ 10^ [ m.val ]@ DUP F@ ROT +
+   0 MAX #999  MIN  SWAP ULOCK ! LOCK
+;
+
+: swd  ( -- )	-- switch digit
+   DROP
+   [ led# ]C@ 2  < if
+     [ led# ]INC
+   else
+     [ led# ]CLR
+     [ m.tim ]CLRW
+     [ -1   m.disp ]lit!
+     [ here constant ptr1  $AAAA ( dummy)  m.level ]lit!	-- back to M0
+   then 
+;
+
+: incd    1  h2 ;	-- increment digit
+
+: decrd  -1  h2 ;	-- decrement digit
+
+-- Implementation hints:
+-- * menu items are Forth words
+-- * a section of the dictionary is used as a linked list
+-- * the name of a word is used as the menu item string
+
+$385e , $7c c,  ( this is for displaying "BDL")
+here constant M.END
+: bdl. [ EE.BDL m.val ]lit! ;
+$3979 , $6d c,  ( this is for displaying "SEC")
+: sec. [ EE.SEC m.val ]lit! ;
+$3730 , $55 c,  ( this is for displaying "MIN")
+here constant M.START
+: min.  [ EE.MIN m.val ]lit! ;	-- "_" better resembles "n" on 7SEG display
+
+-- ( compile time stack: M.end )
+: M.next ( -- )
+  --  rotate to next menu item
+  [ m.ptr ]@ $c -
+  DUP M.END < if
+    DROP M.START
+  then
+  [ m.ptr ]!
+;
+
+: keyExe ( xtset xt+ xt- -- )
+  -- pressed key selects and executes an xt
+  ?KEY  if DUP>R
+     KEY.SET = if
+        2DROP  EXECUTE  -- xtset
+     else
+        R@ KEY.PLUS = if
+          DROP FNIP EXECUTE  -- xt+
+        else
+          R@ KEY.MINUS = if
+            FNIP  FNIP EXECUTE  -- xt-
+          else
+            3DROP       -- do nothing
+          then
+        then
+      then R>DROP
+    then 
+;
+
+: M.exec
+-- execute m.ptr "method"
+  [ m.ptr ]@ EXECUTE
+;
+  
+: M2 ( -- )
+   -- edit parameter value
+   M.exec
+   [ m.val ]@ F@ ( DUP ) .
+   ['] swd  ['] incd  ['] decrd  keyExe
+;
+
+: M1.select
+-- Go to next menu level
+    [ ' M2 m.level ]lit!
+;
+
+: M1 ( -- )
+-- select parameter
+   ['] M1.select  ['] M.next  ['] M.next  keyExe
+   [ m.ptr ]@ 3  - .menu
+;
+
+-- Set time
+: set
+	[ EE.MIN ]@ #60   * [ EE.SEC ]@ + 
+	[ PLS ]!
+;
+
+here constant ---
+
+$40 c, $40 c, $40 c, ( to display "---")
+
+: M0 ( -- )
+-- main menu - normally print PLS
+-- enter menu on key "set"
+   [ m.tim ]@ #50  < if
+     --- .menu  [ m.tim ]INCW		-- indicate we are back in M0
+     set
+   else
+     ?KEY if
+       -- key actions
+       KEY.SET = if
+         [ ' M1 m.level ]lit!
+       then
+     then
+     [ bdl? ]C@ if
+       [ sec ]@
+     else
+       [ PLS ]@
+     then
+     M.
+   then
+;
+
+: menu ( -- )
+   [ m.level ]@ EXECUTE
+;
+
+-- replace dummy address ($AAAA)
+' M0 >lohi ptr1 \f 1+ image-c!	ptr1 5 + image-c!  
+
+ld work/W1209-FD/timer/timer-int
+
+__host
+forth
+hex

@@ -1,0 +1,22 @@
+#/bin/bash!
+
+# this script is called by n" in flash.mu4 to assemble a space seperated list of instructions with naken_asm
+
+# First generate a file with all the relevant addresses
+cat /tmp/target.con /tmp/target /tmp/target-runtime >/tmp/xtokens
+
+# exchange equate names with addresses
+awk -F'[ ,]+' '
+NR==FNR {A[$2]=$1;next}
+{for (i =1;i<=NF;i++) {
+	if ($i in A)  sub($i,A[$i])}}
+{print}
+#END {
+#for (i in A) print i,A[i] }
+' /tmp/xtokens /tmp/assembly > /tmp/2assembly
+
+# make a list of instructions, one instruction per line
+tools/naken.sed /tmp/2assembly > /tmp/list.asm
+
+# the actual assembling
+naken_asm -type bin -o /tmp/as.bin /tmp/list.asm 1>/dev/null

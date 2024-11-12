@@ -1,0 +1,11 @@
+loading SH1106 OLED display
+
+
+-d MINDEV
+
+ld target/STM8/MINDEV.mu4
+-- flash \m cmd, constant CMD
+ld aliases
+
+ld work/lib/SH1106-SPI
+hex

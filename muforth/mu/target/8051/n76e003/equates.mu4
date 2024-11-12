@@ -1,0 +1,180 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+
+loading 8081/n763003/equates.mu4 : N76E003 equates
+
+( These values were "scraped" by hand from the reference manual
+  [https://www.silabs.com/documents/public/reference-manuals/efm8bb1-rm.pdf],
+  and then "prettified" by a Lua script:
+  mu/target/8051/silabs/efm8/bb1/chipdefs.lua)
+
+ld target/common/equates.mu4
+
+hex
+
+-- interrupt vectors
+03 equ  INT_EXT0 ( external interrup 0)
+0b equ  INT_TIM0 ( )
+13 equ  INT_EXT1 ( )
+1b equ  INT_TIM1 ( )
+23 equ  INT_S0   ( serial port 0)
+2b equ  INT_TIM2 ( )
+33 equ  INT_I2C  ( )
+3b equ  INT_PIN  ( pin interrupt)
+43 equ  INT_BO   ( brown out)
+4b equ  INT_SPI  ( )
+53 equ  INT_WDT  ( watchdog timer)
+5b equ  INT_ADC  ( )
+63 equ  INT_CAP  ( input capture)
+6b equ  INT_PWM  ( )
+73 equ  INT_FBE  ( fault break event)
+7b equ  INT_S1   ( serial port 1)
+83 equ  INT_TIM3 ( )
+8b equ  INT_SWT ( self wakeup timer)
+
+-- SFR Page 1
+0ab equ  P3S          | P3 schmitt trigger input
+0ac equ  P3SR         | P3 slew rate
+0b0 equ  P0S          | P0 schmitt trigger input
+0b1 equ  P0SR         | P0 slew rate
+0b2 equ  P1S          | P1 schmitt trigger input
+0b3 equ  P1SR         | P1 slew rate
+0b7 equ  PWMINTC      | PWM interrupt control
+0c4 equ  PWM4H        | PWM 4 duty high byte
+0c5 equ  PWM5H        | PWM 5 duty high byte
+0c6 equ  PIOCON1      | PWM I/O switch 1
+0cc equ  PWM4L        | PWM 4 duty low byte
+0cd equ  PWM5L        | PWM 5 duty low byte
+0f3 equ  SPCR2        | SPI control 2
+
+-- SFR Page 0
+080 equ  P0           | Port 0 Pin Latch
+081 equ  SP           | Stack Pointer
+082 equ  DPL          | Data Pointer Low
+083 equ  DPH          | Data Pointer High
+084 equ  RCTRIM0      | Internal RC trim value high byte
+085 equ  RCTRIM1      | Internal RC trim value low byte
+086 equ  RWK          | Self Wake-up timer reload byte
+087 equ  PCON         | Power Control
+088 equ  TCON         | Timer 0/1 Control
+089 equ  TMOD         | Timer 0/1 Mode
+08a equ  TL0          | Timer 0 Low Byte
+08b equ  TL1          | Timer 1 Low Byte
+08c equ  TH0          | Timer 0 High Byte
+08d equ  TH1          | Timer 1 High Byte
+08e equ  CKCON        | Clock Control
+08f equ  WKCON        | Self Wake-up timer control
+090 equ  P1           | Port 1 Pin Latch
+091 equ  SFRS         | SFR page selection
+092 equ  CAPCON0      | Input capture control 0
+093 equ  CAPCON1      | Input capture control 1
+094 equ  CAPCON2      | Input capture control 2
+095 equ  CKDIV        | Clock divider
+096 equ  CKSWT        | Clock switch
+097 equ  CKEN         | Clock enable
+098 equ  SCON         | Serial Port 0 Control
+099 equ  SBUF         | Serial Port 0 Data Buffer
+09a equ  SBUF_1       | Serial Port 1 Data Buffer
+09b equ  EIE          | Extensive interrupt enable
+09c equ  EIE1         | Extensive interrupt enable 1
+-- 09d equ  CMP0MD       | Comparator 0 Mode
+-- 09e equ  PCA0CENT     | PCA Center Alignment Enable
+09f equ  CHPCON       | Chip control
+0a0 equ  P2           | Port 2 Pin Latch
+-- 0a1 equ  SPI0CFG      | SPI0 Configuration
+0a2 equ  AUXR1        | Auxiliary register 1
+0a3 equ  BODCON0      | Brown-out detection control 0
+0a4 equ  IAPTRG       | IAP trigger
+0a5 equ  IAPUEN       | IAP update enable
+0a6 equ  IAPAL        | IAP address low byte
+0a7 equ  IAPAH        | IAP address high byte
+0a8 equ  IE           | Interrupt Enable
+0a9 equ  SADDR        | Slave sddress
+0aa equ  WDCON        | Watchdog timer control
+0ab equ  BODCON1      | Brown-out detection control 1
+0ac equ  P3M1         | P3 mode select 1
+0ad equ  P3M2         | P3 mode select 2
+0ae equ  IAPFD        | IAP flash data
+0af equ  IAPCN        | IAP control
+0b0 equ  P3           | Port 3
+0b1 equ  P0M1         | P0 mode select 1
+0b2 equ  P0M2         | P0 mode select 2
+0b3 equ  P1M1         | P1 mode select 1
+0b4 equ  P1M2         | P1 mode select 2
+0b5 equ  P2S          | Device Identification
+-- 0b6 equ  REVID        | Revision Identifcation
+0b7 equ  IPH          | Interrupt Priority high
+0b8 equ  IP           | Interrupt Priority
+0b9 equ  SADEN        | Slave 0 address mask
+0ba equ  SADEN_1      | Slave 1 address mask
+0bb equ  SADDR_1      | Slave 1 address
+0bc equ  I2DAT        | I2C data
+0bd equ  I2STAT       | I2C status
+0be equ  I2CLK        | I2C clock
+0bf equ  I2TOC        | I2C time-out counter
+0c0 equ  I2CON        | I2C Control
+0c1 equ  I2ADDR       | I2C own slave address
+0c2 equ  ADCRL        | ADC result low
+0c3 equ  ADCRH        | ADC result high
+0c4 equ  T3CON        | Timer 3 control
+0c5 equ  RL3          | Timer 3 reload low byte
+0c6 equ  RH3          | Timer 3 reload high byte
+0c7 equ  TA           | Timed acces protection
+0c8 equ  T2CON        | Timer 2 Control
+0c9 equ  T2MOD        | VTimer 2 mode
+0ca equ  RCMP2L       | Timer 2 compare Low Byte
+0cb equ  RCMP2H       | Timer 2 compare High Byte
+0cc equ  TL2          | Timer 2 Low Byte
+0cd equ  TH2          | Timer 2 High Byte
+0ce equ  ADCMPL       | ADC compare low byte
+0cf equ  ADCMPH       | ADC compare high byte
+0d0 equ  PSW          | Program Status Word
+0d1 equ  PWMPH        | PWM period high byte
+0d2 equ  PWM0H        | PWM 0 duty high byte
+0d3 equ  PWM1H        | PWM 1 duty high byte
+0d4 equ  PWM2H        | PWM 2 duty high byte
+0d5 equ  PWM3H        | PWM 3 duty high byte
+0d6 equ  PNP          | PWM negative polarity
+0d7 equ  FBD          | SMBus 0 Slave Address
+0d8 equ  PWMCON0      | PWM control 0
+0d9 equ  PWMPL        | PWM Period low byte
+0da equ  PWM0L        | PWM 0 duty low byte
+0db equ  PWM1L        | PWM 1 duty low byte
+0dc equ  PWM2L        | PWM 2 duty low byte
+0dd equ  PWM3L        | PWM 3 duty low byte
+0de equ  PIOCON0      | PWM I/O switch 0
+0df equ  PWMCON1      | PWM control 1
+0e0 equ  ACC          | Accumulator
+0e1 equ  ADCCON1      | ADC control 1
+0e2 equ  ADCCON2      | ADC control 2
+0e3 equ  ADCDLY       | ADC trigger delay
+0e4 equ  C0L          | Input capture 0 low byte
+0e5 equ  C0H          | Input capture 0 high byte
+0e6 equ  C1L          | Input capture 1 low byte
+0e7 equ  C1H          | Input capture 1 high byte
+0e8 equ  ADCCON0      | ADC control 0
+0e9 equ  PICON        | Pin interrupt control
+0ea equ  PINEN        | Pin interrupt low level/falling edge enable
+0eb equ  PIPEN        | Pin interrupt high level/rising edge enable
+0ec equ  PIF          | Pin interrupt flag
+0ed equ  C2L          | Input capture 2 low byte
+0ee equ  C2H          | Input capture 2 high byte
+0ef equ  EIP          | Extensive interrupt priority
+0f0 equ  B            | B Register
+0f1 equ  CAPCON3      | Input capture control 3
+0f2 equ  CAPCON4      | Input capture control 4
+0f3 equ  SPCR         | SPI control
+0f4 equ  SPSR         | SPI status
+0f5 equ  SPDR         | SPI data
+0f6 equ  AINDIDS      | ADC channel digital input disable
+0f7 equ  EIPH         | Extensive interrupt priority high
+0f8 equ  SCON_1       | Serial port 1 Control
+0f9 equ  PDTEN        | PWM dead-time enable
+0fa equ  PDTCNT       | PWM dead-time counter
+0fb equ  PMEN         | PWM mask enable
+0fc equ  PMD          | PWM mask data
+0fd equ  PORDIS       | 
+0fe equ  EIP1         | Extensive interrupt priority 1
+0ff equ  EIPH1        | Extensive interrupt priority high 1
+

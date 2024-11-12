@@ -1,0 +1,13 @@
+It's pretty simple.
+
+  (1) cd src
+  (2) ./configure.sh
+  (3) make
+
+The configure script gives you some options.
+
+The muforth executable remains in the src/ directory, but a symlink pointing to
+it is placed into the mu/ directory, and that's where you should be when
+running muforth.
+
+Enjoy!

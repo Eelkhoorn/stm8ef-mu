@@ -1,0 +1,59 @@
+loading ( some shortcuts )
+
+forth
+-- : export >r >r create-file r> r> dup >r pad ['] read32 chunked dup pad r> write close-file ;
+-- z" file.bin" region export
+
+-- Make it a bit easier to execute words on the target.
+-- Instead of  \t <target-word> remote
+-- We can say  \tex <target-word>
+
+compiler
+: \tex   \c \t ( make a literal of the target's runtime address)
+         compile remote  ( and then compile a call to remote)
+;
+forth
+
+-- d. is used for printing double numbers
+: e. radix preserve #10 radix \f ! u. ;
+-- : h. radix preserve hex u. ;
+-- : b. radix preserve %10 radix  ! u. ;
+-- : d.. 2dup \m d. ;
+: h.. dup h. ;
+: b.. dup b. ;
+
+: ch __chatting ;
+
+
+: t-spy spy @ 0= spy ! ;
+meta
+
+: hh  \m __host ;
+: cs ( a --) flush drain c.set-sp ;
+: cg  ( --a) flush drain c.get-sp dup tsp ! ;
+: to ( a b c ... n --) for >b next ;
+: f- - ;
+: f+ + ;
+: f@ @ ;
+: f! ! ;
+: cpr ( a) ram-copied ! copy-ram ;
+-- rewrite ram
+: rr @ram \m cpr ;
+
+forth
+
+-- write cell to ram image and to target
+: !ram ( n a) \t ! remote ;
+
+
+-- reset 'BOOT
+-- : 'boot-reset \m 'BOOT dup 2 + swap !flash ; 
+: boot-reset \t RETURN \m 'BOOT !flash ;
+: spr sp-reset  chat-vector @ if sp0 \m cs \m cg drop then ;
+: SPR spr ;
+
+hex
+
+ ram
+
+forth

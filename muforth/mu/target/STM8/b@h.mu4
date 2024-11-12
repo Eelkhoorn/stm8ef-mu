@@ -1,0 +1,9 @@
+loading target/STM8/b@h.mu4
+-- helper in ram for B@  B!  BF@  BF!
+-- Just to update ram while chatting
+
+__meta hex ram 
+here BITAT goto 
+ : b@h [ 
+$4f72  , $0100  , $0801  , $4ce7  , $0181  , $7210  , $0100  , $81 c,
+goto

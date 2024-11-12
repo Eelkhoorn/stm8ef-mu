@@ -1,0 +1,54 @@
+-- ADC for STM8L, using DMA, measure PB3 and Vrefint
+loading work/lib/L-ADC
+
+flash
+__meta
+
+--  buffer for 2 adc conversions, PB3 and Vrefint
+VARIABLE buff 2 allotr
+-- VARIABLE adcRI		--  internal reference Voltage
+
+: *10us  ( n -- )  --   Richard's delay word, n * 10us
+	1- for [
+		$A62B ,    --       LD    A,#42
+		$4A  c,    --  1$:  DEC   A
+		$26FD ,    --       JRNE  1$
+	] next
+;
+
+--  adc-dma initialisation
+: adi ( --)
+	[ $91 CLK_PCKENR2 ]litC!		--  enable adc and dma in clock gating reg
+	[ 1 ADC1_CR1 0 ]B!			--  adon in ADC1_CR1
+	[ 7 ADC1_CR2 ]litC!			--  384 adc clock cycles for sampling
+	[ $FF ADC1_CR3 ]litC!			--  384 clock cycles for vrefint sampling
+	[ $10 ADC1_SQR1 ]litC!			--  set CHSEL_VREFINT
+	[ 0 DMA1_GCSR 0 ]B!			--  DMA1_GCSR, global config & status reg., global disable
+	[ ADC1_DRH  DMA1_C0PARH ]lit!	--  write adc_dr addr to dma1 peripheral address reg.
+	[ buff  DMA1_C0M0ARH ]lit!		--  write buff address to dma1 memory address reg.
+	[ 1 DMA1_C0CR 4 ]B!			--  DMA1_C0CR, Channel 0 config reg., set CIRC
+	[ 1 DMA1_C0CR 5 ]B!			--  DMA1_C0CR, Channel 0 config reg., set MINCDEC
+	[ $38 DMA1_C0SPR ]litC!		--  DMA1_C0SPR, Channel status & priority reg.
+								-- 		high priority, 16 bit data size
+	[ 1 DMA1_GCSR 0 ]B!			--  DMA1_GCSR, global config & status reg., global enable
+-- 	[ $23 ADC1_SQR2 ]litC!			--  select channel 16, 17 and 21 (PB0, PB1 and PB2) for scanning
+	[ $80 ADC1_SQR3 ]litC!			--  select channel 15 (PB3) for scanning
+-- 	[ $23 ADC1_TRIGR2 ]litC!		--  disable Schmitt trigger for channel 16, 17 and 21
+	[ $80 ADC1_TRIGR3 ]litC!		--  disable Schmitt trigger for channel 15
+	[ 0 DMA1_C0CR 0 ]B!			--  DMA1_C0CR, Channel 0 config reg., disable channel
+	[ 2 DMA1_C0NDTR ]litC!			--  DMA1_C0NDTR, Number of data to transfer,
+	[ 1 DMA1_C0CR 0 ]B!			--  DMA1_C0CR, Channel 0 config reg., enable channel
+;
+
+
+--  trigger adc: fill buff
+: tadc ( --)
+	[ 1 ADC1_TRIGR1 4 ]B!		--  set bit 4 of ADC1_TRIGR1, VREFINTON
+	#600 *10us 					--  vrefint has 3 ms startup time
+	[ 1 ADC1_CR1 1 ]B!
+--  wait for dma transaction to be completed, reset bit 1
+	[ $7203 , DMA1_C0SPR , $FB c, ]
+	[ 0 DMA1_C0SPR 1 ]B!
+	[ 0 ADC1_TRIGR1 4 ]B!		--  reset bit 4 of ADC1_TRIGR1, VREFINTON
+;
+

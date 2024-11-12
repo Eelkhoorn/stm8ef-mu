@@ -1,0 +1,13 @@
+.ifndef (M+)
+
+-d (M+)
+
+ld work/lib/D+
+
+__meta
+
+: M+ ( d n -- d)
+	0 D+
+;
+
+.then

@@ -1,0 +1,4 @@
+hex
+
+100 buffer PAD
+: cat PAD m ! swap count m-cmove count m-cmove ;

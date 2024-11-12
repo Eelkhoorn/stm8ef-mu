@@ -1,0 +1,166 @@
+( This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+
+loading 8051 chat (host)
+
+hex
+
+( Taking inspiration from the wildly successful HC08 serial chat protocol.
+|
+| Responds to the following commands. NOTE: these are hex values!
+|
+| 00 - 0f  idle        - these command bytes are ignored
+| 1a - ff  idle        - these command bytes are ignored
+|
+| 10  version-addr     - get the address of the version commit
+| 11  set-addr         - set dptr to 16-bit address
+| 12  run              - set the machine SP, pop R1, PSW, and PC
+| 13  get-status       - get the machine SP
+|
+| 14  read-flash       - read one byte of flash, inc dptr
+| 15  read-ram         - read one byte of ram, inc dptr
+| 16  read-xram        - read one byte of xram, inc dptr
+|
+| 17  write-flash      - erase a page or program one byte,
+|                    - inc dptr, return status byte
+| 18  write-ram        - write one byte to ram, inc dptr
+| 19  write-xram       - write one byte to xram, inc dptr
+)
+
+: >b   send ;
+: b>   recv ;
+
+: >w    >lohi  >b >b ;
+: >cmd  ?spkt  >b ;
+
+( "cx.<something>" words are chat *transport* code.
+| "c.<something>" words are the high-level chat interface code.)
+
+variable cx-space  ( 0 = flash, 1 = ram, 2 = xram)
+: flash-space    cx-space off ;
+: ram-space    1 cx-space ! ;
+
+( If flash is current space, get and discard flash programming status.)
+: ?flash-status     cx-space @ if ^ then  b> drop ;
+
+: ?writing-ram   cx-space @ if ^ then
+   error" can only write from ram or xram region" ;
+
+: ?programming-flash   cx-space @ 0= if ^ then
+   error" can only program from flash region" ;
+
+( Choose a memory space based on current host region.)
+: choose-space
+   h preserve
+   'aspace  flash dup 'aspace = if drop 0 ^ then  ( flash)
+            ram       'aspace = if      1 ^ then  ( ram)
+                                        2 ;       ( xram)
+
+: setup-space  choose-space cx-space ! ;
+
+
+-- ------------------------------------------------------------------------
+-- Chat transport interface
+-- ------------------------------------------------------------------------
+
+: cx.idle                    0 >cmd ;
+: cx.version-addr           10 >cmd ;  ( then read 4 bytes of flash)
+: cx.set-addr     ( a)      11 >cmd  >w ;
+
+: cx.run          ( rp)     12 >cmd  >b ;
+: cx.get-status   ( - rp)   13 >cmd      b> ;
+
+: cx.read   ( - b)          14  cx-space @ +  >cmd  b> ;
+: cx.write  ( b)            17  cx-space @ +  >cmd  >b  ?flash-status ;
+
+
+-- ------------------------------------------------------------------------
+-- Helper code
+-- ------------------------------------------------------------------------
+
+( Send two no-ops, let them transmit, *then* throw away any input bytes.)
+: c.resync  cx.idle  cx.idle  drain  flush ;
+
+: c.get-version  ( - n)
+   cx.version-addr  flash-space
+   cx.read  cx.read  cx.read  cx.read  3210> ;
+
+( Set memory address and target memory space.)
+: c.setup-chunk  ( buf a u - #bytes)
+   setup-space
+   swap cx.set-addr  swap m ! ;
+
+: 4#   # # # # ;
+
+( NOTE: These equates *must* be kept synchronized with the target chat
+| code, since we are writing directly to variables in the target's ram.)
+
+( RAM variables. These are bank 3 registers - the bank used by the chat
+| code.)
+
+18 3 + equ flash-command  ( r3, bank 3)
+18 4 + equ flash-key1     ( r4, bank 3)
+18 5 + equ flash-key2     ( r5, bank 3)
+
+: set-ram-addr       ( a)   cx.set-addr  ram-space ;
+: set-flash-command  ( b)
+   \eq flash-command set-ram-addr  cx.write ;
+
+-- ------------------------------------------------------------------------
+-- Chat interface
+-- ------------------------------------------------------------------------
+
+: c.hello  ( - #chunk)
+   #115200 bps  c.resync
+   cr ." Chat firmware version "  c.get-version
+   radix preserve  hex  sep preserve  -sep   <# 4# 4# #> type
+   #128 ;
+
+( Machine stack is upside-down: it grows *up* in memory. So the bottom of
+| the stack is at a lower address than the top. Also, the machine stack
+| pointer - which we are here calling RP - points *at* the last byte pushed.
+|
+| So that we don't go crazy, let's pretend that RP is post-increment rather
+| than pre-increment, and adjust it when reading or writing the actual
+| register.)
+
+( Rewrite PC in the stack slot. Leave PSW alone.)
+: c.run   ( pc rp)
+   dup push  3 - ( back up over: psw, pc)
+   set-ram-addr  >hilo cx.write cx.write ( pc)
+   pop 1- ( make pre-increment) cx.run ;
+
+: c.get-status  ( - rp pc psw)
+   cx.get-status ( rp)  1+ ( make post-increment)  2 -  ( skip last ret addr)
+   dup 3 - ( back up over: psw, pc)
+   set-ram-addr  cx.read cx.read lohi> ( pc - oddly little-endian)
+   cx.read ( psw) ;
+
+: c.read    ( buf a u)
+   -- cr  ." c.read "  2 nth u.  over u.  dup u.
+   c.setup-chunk  for  cx.read  m&  next ;
+
+: c.write       ( buf a u)
+   c.setup-chunk  ?writing-ram  for  m* cx.write  next ;
+
+( Write magic numbers into flash key variables.)
+: c.flash-begin
+   \eq flash-command set-ram-addr
+   0 cx.write  0a5 cx.write  0f1 cx.write ;
+
+: c.flash-end
+   \eq flash-command set-ram-addr
+   0 cx.write  0 cx.write  0 cx.write ;
+
+: c.erase     ( a)
+   03 set-flash-command  ( sets PSEE and PSWE in PSCTL)
+   setup-space  ?programming-flash  cx.set-addr  0 cx.write ;
+
+: c.program   ( buf a u)
+   01 set-flash-command  ( sets PSWE and clears PSEE in PSCTL)
+   c.setup-chunk  ?programming-flash  for  m* cx.write  next ;
+
+: chat   chat-via
+   c.hello  c.get-status  c.run  c.read  c.write
+   c.flash-begin  c.flash-end  c.erase  c.program ;

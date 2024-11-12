@@ -1,0 +1,17 @@
+-- D+             double maths utility word (C) RigTig 2017
+
+.ifndef (D+)
+loading work/lib/D+
+
+-d (D+)
+
+__meta
+
+: D+ ( d d -- d )
+  ( al ah bl bh )
+  >R ROT UM+ ( ah dl dh ) 
+  ROT + ( d )   -- eForth + is U+
+  R> +
+;
+
+.then

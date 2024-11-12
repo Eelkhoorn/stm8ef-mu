@@ -1,0 +1,117 @@
+
+naken_util - by Michael Kohn
+                Joe Davisson
+    Web: https://www.mikekohn.net/
+  Email: mike@mikekohn.net
+
+Version: February 7, 2024
+
+Loaded /tmp/i2isr of type bin / stm8 from 0x0000 to 0x00fa
+Type help for a list of commands.
+
+Addr     Opcode         Instruction                              Cycles
+-------  ------------   ----------------------------------       ------
+0x0000:  72 01 52 17 16 btjf I2C_SR1, #0, EV6  (offset=22)       2-3
+0x0005:  c6 52 16       ld A, I2C_DR                             1
+0x0008:  b6 11          ld A, S_ADDR                             1
+0x000a:  48             sll A                                    1
+0x000b:  97             ld XL, A                                 1
+0x000c:  b6 12          ld A, CCOUNT                             1
+0x000e:  ba 13          or A, TCOUNT                             1
+0x0010:  26 05          jrne $17  (offset=5)                     1-2
+0x0012:  3d 14          tnz RCOUNT                               1
+0x0014:  27 01          jreq $17  (offset=1)                     1-2
+0x0016:  5c             incw X                                   1
+0x0017:  9f             ld A, XL                                 1
+0x0018:  c7 52 16       ld I2C_DR,A                              1
+EV6:
+0x001b:  72 03 52 17 28 btjf I2C_SR1, #1, EV7  (offset=40)       2-3
+0x0020:  c6 52 17       ld A, I2C_SR1                            1
+0x0023:  c6 52 19       ld A, I2C_SR3                            1
+0x0026:  72 05 52 19 0c btjf I2C_SR3, #2, $37  (offset=12)       2-3
+0x002b:  b6 12          ld A, CCOUNT                             1
+0x002d:  ba 13          or A, TCOUNT                             1
+0x002f:  26 04          jrne $35  (offset=4)                     1-2
+0x0031:  72 12 52 11    bset I2C_CR2, #1                         1
+0x0035:  20 0d          jra $44  (offset=13)                     2
+0x0037:  b6 14          ld A, RCOUNT                             1
+0x0039:  4a             dec A                                    1
+0x003a:  26 08          jrne $44  (offset=8)                     1-2
+0x003c:  72 15 52 11    bres I2C_CR2, #2                         1
+0x0040:  72 12 52 11    bset I2C_CR2, #1                         1
+0x0044:  72 14 52 1a    bset I2C_ITR, #2                         1
+EV7:
+0x0048:  72 0d 52 17 23 btjf I2C_SR1, #6, EV81  (offset=35)      2-3
+0x004d:  c6 52 16       ld A, I2C_DR                             1
+0x0050:  88             push A                                   1
+0x0051:  c6 00 14       ld A, RCOUNT                             1
+0x0054:  27 19          jreq $6f  (offset=25)                    1-2
+0x0056:  a1 03          cp A, #$03                               1
+0x0058:  2a 08          jrpl $62  (offset=8)                     1-2
+0x005a:  72 15 52 11    bres I2C_CR2, #2                         1
+0x005e:  72 12 52 11    bset I2C_CR2, #1                         1
+0x0062:  3a 14          dec RCOUNT                               1
+0x0064:  51             exgw X, Y                                1
+0x0065:  be 19          ldw X, RPOINT                            2
+0x0067:  84             pop A                                    1
+0x0068:  f7             ld (X),A                                 1
+0x0069:  5c             incw X                                   1
+0x006a:  bf 19          ldw RPOINT,X                             2
+0x006c:  51             exgw X, Y                                1
+0x006d:  20 01          jra EV81  (offset=1)                     2
+0x006f:  84             pop A                                    1
+EV81:
+0x0070:  72 0f 52 17 2c btjf I2C_SR1, #7, EV82  (offset=44)      2-3
+0x0075:  c6 00 12       ld A, CCOUNT                             1
+0x0078:  27 0f          jreq $89  (offset=15)                    1-2
+0x007a:  51             exgw X, Y                                1
+0x007b:  be 15          ldw X, CPOINT                            2
+0x007d:  f6             ld A, (X)                                1
+0x007e:  c7 52 16       ld I2C_DR,A                              1
+0x0081:  5c             incw X                                   1
+0x0082:  bf 15          ldw CPOINT,X                             2
+0x0084:  51             exgw X, Y                                1
+0x0085:  3a 12          dec CCOUNT                               1
+0x0087:  20 18          jra EV82  (offset=24)                    2
+0x0089:  c6 00 13       ld A, TCOUNT                             1
+0x008c:  27 0f          jreq $9d  (offset=15)                    1-2
+0x008e:  51             exgw X, Y                                1
+0x008f:  be 17          ldw X, TPOINT                            2
+0x0091:  f6             ld A, (X)                                1
+0x0092:  c7 52 16       ld I2C_DR,A                              1
+0x0095:  5c             incw X                                   1
+0x0096:  3f 17          clr TPOINT                               1
+0x0098:  51             exgw X, Y                                1
+0x0099:  3a 13          dec TCOUNT                               1
+0x009b:  20 04          jra EV82  (offset=4)                     2
+0x009d:  72 15 52 1a    bres I2C_ITR, #2                         1
+EV82:
+0x00a1:  72 05 52 17 13 btjf I2C_SR1, #2, EF  (offset=19)        2-3
+0x00a6:  c6 00 14       ld A, RCOUNT                             1
+0x00a9:  27 0a          jreq $b5  (offset=10)                    1-2
+0x00ab:  72 14 52 11    bset I2C_CR2, #2                         1
+0x00af:  72 10 52 11    bset I2C_CR2, #0                         1
+0x00b3:  20 04          jra EF  (offset=4)                       2
+0x00b5:  72 12 52 11    bset I2C_CR2, #1                         1
+EF:
+0x00b9:  c6 52 18       ld A, I2C_SR2                            1
+0x00bc:  27 0f          jreq $cd  (offset=15)                    1-2
+0x00be:  4f             clr A                                    1
+0x00bf:  c7 52 1a       ld I2C_ITR,A                             1
+0x00c2:  31 52 18       exg A, I2C_SR2                           3
+0x00c5:  aa 80          or A, #$80                               1
+0x00c7:  b7 10          ld I2ISR,A                               1
+0x00c9:  72 12 52 11    bset I2C_CR2, #1                         1
+0x00cd:  80             iret                                     11
+
+I2I
+0x00ce:  72 11 52 10    bres I2C_CR1, #0                         1
+0x00d2:  35 00 52 11    mov I2C_CR2, #$00                        1
+0x00d6:  72 18 52 12    bset $5212, #4                           1
+0x00da:  35 a0 52 13    mov $5213, #$a0                          1
+0x00de:  35 40 52 14    mov $5214, #$40                          1
+0x00e2:  35 80 52 1c    mov $521c, #$80                          1
+0x00e6:  35 0d 52 1b    mov $521b, #$0d                          1
+0x00ea:  35 11 52 1d    mov $521d, #S_ADDR                       1
+0x00ee:  72 10 52 10    bset I2C_CR1, #0                         1
+0x00f2:  81             ret                                      4

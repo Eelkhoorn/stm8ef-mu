@@ -1,0 +1,118 @@
+.ifndef (FONT)
+
+-d (FONT)
+
+loading work/Nuvoton/FONT   5x8 font
+
+-- @created: 2014-08-12
+-- @author: Neven Boyanov
+
+-- Copyright (c) 2015 Neven Boyanov, Tinusaur Team. All Rights Reserved.
+-- Distributed as open source software under MIT License, see LICENSE.txt file.
+-- Please, as a favour, retain the link http://tinusaur.org to The Tinusaur Project.
+
+-- Source code available at: https://bitbucket.org/tinusaur/ssd1306xled
+
+flash
+
+hex
+__meta
+label FONT   -- 5x8    
+
+  00 c, 00 c, 00 c, 00 c, 00 c, 00 c, -- space
+  00 c, 00 c, 2F c, 00 c, 00 c, 00 c, -- !
+  00 c, 07 c, 00 c, 07 c, 00 c, 00 c, -- "
+  14 c, 7F c, 14 c, 7F c, 14 c, 00 c, -- #
+  24 c, 2A c, 7F c, 2A c, 12 c, 00 c, -- $
+  23 c, 13 c, 08 c, 64 c, 62 c, 00 c, -- %
+  36 c, 49 c, 55 c, 22 c, 50 c, 00 c, -- &
+  00 c, 05 c, 03 c, 00 c, 00 c, 00 c, -- '
+  00 c, 1C c, 22 c, 41 c, 00 c, 00 c, -- (
+  00 c, 41 c, 22 c, 1c c, 00 c, 00 c, -- )
+  14 c, 08 c, 3E c, 08 c, 14 c, 00 c, --
+  08 c, 08 c, 3E c, 08 c, 08 c, 00 c, -- +
+  00 c, 00 c, A0 c, 60 c, 00 c, 00 c, -- ,
+  08 c, 08 c, 08 c, 08 c, 08 c, 00 c, -- -
+  00 c, 60 c, 60 c, 00 c, 00 c, 00 c, -- .
+  20 c, 10 c, 08 c, 04 c, 02 c, 00 c, -- /
+  3E c, 51 c, 49 c, 45 c, 3E c, 00 c, -- 0
+  00 c, 42 c, 7F c, 40 c, 00 c, 00 c, -- 1
+  42 c, 61 c, 51 c, 49 c, 46 c, 00 c, -- 2
+  21 c, 41 c, 45 c, 4B c, 31 c, 00 c, -- 3
+  18 c, 14 c, 12 c, 7F c, 10 c, 00 c, -- 4
+  27 c, 45 c, 45 c, 45 c, 39 c, 00 c, -- 5
+  3C c, 4A c, 49 c, 49 c, 30 c, 00 c, -- 6
+  01 c, 71 c, 09 c, 05 c, 03 c, 00 c, -- 7
+  36 c, 49 c, 49 c, 49 c, 36 c, 00 c, -- 8
+  06 c, 49 c, 49 c, 29 c, 1E c, 00 c, -- 9
+  00 c, 36 c, 36 c, 00 c, 00 c, 00 c, -- :
+  00 c, 56 c, 36 c, 00 c, 00 c, 00 c, -- ;
+  08 c, 14 c, 22 c, 41 c, 00 c, 00 c, -- <
+  14 c, 14 c, 14 c, 14 c, 14 c, 00 c, -- =
+  00 c, 41 c, 22 c, 14 c, 08 c, 00 c, -- >
+  02 c, 01 c, 51 c, 09 c, 06 c, 00 c, -- ?
+  32 c, 49 c, 59 c, 51 c, 3E c, 00 c, -- @
+  7C c, 12 c, 11 c, 12 c, 7C c, 00 c, -- A
+  7F c, 49 c, 49 c, 49 c, 36 c, 00 c, -- B
+  3E c, 41 c, 41 c, 41 c, 22 c, 00 c, -- C
+  7F c, 41 c, 41 c, 22 c, 1C c, 00 c, -- D
+  7F c, 49 c, 49 c, 49 c, 41 c, 00 c, -- E
+  7F c, 09 c, 09 c, 09 c, 01 c, 00 c, -- F
+  3E c, 41 c, 49 c, 49 c, 7A c, 00 c, -- G
+  7F c, 08 c, 08 c, 08 c, 7F c, 00 c, -- H
+  00 c, 41 c, 7F c, 41 c, 00 c, 00 c, -- I
+  20 c, 40 c, 41 c, 3F c, 01 c, 00 c, -- J
+  7F c, 08 c, 14 c, 22 c, 41 c, 00 c, -- K
+  7F c, 40 c, 40 c, 40 c, 40 c, 00 c, -- L
+  7F c, 02 c, 0C c, 02 c, 7F c, 00 c, -- M
+  7F c, 04 c, 08 c, 10 c, 7F c, 00 c, -- N
+  3E c, 41 c, 41 c, 41 c, 3E c, 00 c, -- O
+  7F c, 09 c, 09 c, 09 c, 06 c, 00 c, -- P
+  3E c, 41 c, 51 c, 21 c, 5E c, 00 c, -- Q
+  7F c, 09 c, 19 c, 29 c, 46 c, 00 c, -- R
+  46 c, 49 c, 49 c, 49 c, 31 c, 00 c, -- S
+  01 c, 01 c, 7F c, 01 c, 01 c, 00 c, -- T
+  3F c, 40 c, 40 c, 40 c, 3F c, 00 c, -- U
+  1F c, 20 c, 40 c, 20 c, 1F c, 00 c, -- V
+  3F c, 40 c, 38 c, 40 c, 3F c, 00 c, -- W
+  63 c, 14 c, 08 c, 14 c, 63 c, 00 c, -- X
+  07 c, 08 c, 70 c, 08 c, 07 c, 00 c, -- Y
+  61 c, 51 c, 49 c, 45 c, 43 c, 00 c, -- Z
+  00 c, 7F c, 41 c, 41 c, 00 c, 00 c, -- [
+  55 c, 2A c, 55 c, 2A c, 55 c, 00 c, -- 55
+  00 c, 41 c, 41 c, 7F c, 00 c, 00 c, -- ]
+  04 c, 02 c, 01 c, 02 c, 04 c, 00 c, -- ^
+  40 c, 40 c, 40 c, 40 c, 40 c, 00 c, -- _
+  00 c, 01 c, 02 c, 04 c, 00 c, 00 c, -- '
+  20 c, 54 c, 54 c, 54 c, 78 c, 00 c, -- a
+  7F c, 48 c, 44 c, 44 c, 38 c, 00 c, -- b
+  38 c, 44 c, 44 c, 44 c, 20 c, 00 c, -- c
+  38 c, 44 c, 44 c, 48 c, 7F c, 00 c, -- d
+  38 c, 54 c, 54 c, 54 c, 18 c, 00 c, -- e
+  08 c, 7E c, 09 c, 01 c, 02 c, 00 c, -- f
+  18 c, A4 c, A4 c, A4 c, 7C c, 00 c, -- g
+  7F c, 08 c, 04 c, 04 c, 78 c, 00 c, -- h
+  00 c, 44 c, 7D c, 40 c, 00 c, 00 c, -- i
+  40 c, 80 c, 84 c, 7D c, 00 c, 00 c, -- j
+  7F c, 10 c, 28 c, 44 c, 00 c, 00 c, -- k
+  00 c, 41 c, 7F c, 40 c, 00 c, 00 c, -- l
+  7C c, 04 c, 18 c, 04 c, 78 c, 00 c, -- m
+  7C c, 08 c, 04 c, 04 c, 78 c, 00 c, -- n
+  38 c, 44 c, 44 c, 44 c, 38 c, 00 c, -- o
+  FC c, 24 c, 24 c, 24 c, 18 c, 00 c, -- p
+  18 c, 24 c, 24 c, 18 c, FC c, 00 c, -- q
+  7C c, 08 c, 04 c, 04 c, 08 c, 00 c, -- r
+  48 c, 54 c, 54 c, 54 c, 20 c, 00 c, -- s
+  04 c, 3F c, 44 c, 40 c, 20 c, 00 c, -- t
+  3C c, 40 c, 40 c, 20 c, 7C c, 00 c, -- u
+  1C c, 20 c, 40 c, 20 c, 1C c, 00 c, -- v
+  3C c, 40 c, 30 c, 40 c, 3C c, 00 c, -- w
+  44 c, 28 c, 10 c, 28 c, 44 c, 00 c, -- x
+  1C c, A0 c, A0 c, A0 c, 7C c, 00 c, -- y
+  44 c, 64 c, 54 c, 4C c, 44 c, 00 c, -- z
+  00 c, 08 c, 77 c, 00 c, 00 c, 00 c, -- {
+  00 c, 00 c, 7F c, 00 c, 00 c, 00 c, -- |
+  00 c, 77 c, 08 c, 00 c, 00 c, 00 c, -- }
+  10 c, 08 c, 10 c, 08 c, 00 c, 00 c, -- ~
+label END_FONT
+.then
