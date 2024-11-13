@@ -99,7 +99,7 @@ CVAR Pow
 	ua RR send
 ;
 
-: init ( -- )
+: init0 ( -- )
 	EPR RR #24 CMOVE
 	[ 1 PD_DDR 2 ]B!
 	[ 1 PD_CR1 2 ]B!
