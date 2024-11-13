@@ -167,8 +167,8 @@ CVAR vc		-- vertical cursor position    1, 3 or 5
 	2+ pc! [ Pow ]C@ d#
 ;
 
-: IPC
-	init
+: init
+	init0
 	ssdi
 	[ 1 PC_CR1 3 ]B! [ 1 PC_CR2 3 ]B!	-- PC3 input interrupt
 	[ 1 PC_CR1 4 ]B!					-- PC4 input
