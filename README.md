@@ -1,10 +1,10 @@
 # STM8EF-MU 
 
 ### Muforth plugin for STM8
-Muforth (https://github.com/nimblemachines/muforth) is a forth console running in a terminal. This great tool is designed to build an image of a microprocessor's memory that can be flashed to a target. The traditional (self hosted) forth approach of programming a micro is flashing the target's memory with a kernel that has an interpreter and a compiler. The target's processor is then used to compile the application. In Muforth the host computer is used to interpret words and compile new words (tethered approach). This has the advantage that you no longer need the link fields and name fields in the target's memory. All this administration is performed on the host computer. Here are some of the benefits of this approach:
+Muforth (https://github.com/nimblemachines/muforth) is a forth console running in a terminal. This great tool is designed to build an image of a microprocessor's memory that can be flashed to a target. The traditional (self hosted) forth approach of programming a micro is flashing the target's memory with a kernel that has an interpreter and a compiler. The target's processor is then used to compile the application. In muforth the host computer is used to interpret words and compile new words (tethered approach). This has the advantage that you no longer need the link fields and name fields in the target's memory. All this administration is performed on the host computer. Here are some of the benefits of this approach:
 + Very efficient use of flash memory: no interpreter or compiler words in the kernel, no name fields or link fields needed.
 + Debugging with gdb is now easier: gdb is no longer confused by the name and link fields.
-+ No need to load temporary words like equates or additional compiling words in the target's RAM during compilation. All the equates and libraries can be loaded in Muforth and are available during compilation.
++ No need to load temporary words like equates or additional compiling words in the target's RAM during compilation. All the equates and libraries can be loaded in muforth and are available during compilation.
 + No restriction in namelength of words that otherwise would consume flash space, so we can use descriptive names to increase the readability of the program.
 + Assembling and disassembling is easy: Michael Kohn's great assembler/disassembler (https://www.mikekohn.net/micro/naken_asm.php) is integrated.
 
@@ -12,7 +12,7 @@ The downside is that we need to keep track of what is flashed to the target if w
 
 
 ### Stm8ef
-Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas@TG9541 further developed the kernel, focussing on cheap and widely available development boards with stm8 processors.  (https://github.com/TG9541/stm8ef has all you need to install a self-hosted forth system on a stm8 device, and includes a thorough documentation). For Stm8ef-mu Thomas' forth.asm file is modified: 
+Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas@TG9541 further developed the kernel, focussing on cheap and widely available development boards with stm8 processors.  His site (https://github.com/TG9541/stm8ef) has all you need to install a self-hosted forth system on a stm8 device, and includes a thorough documentation. For stm8ef-mu Thomas' forth.asm file is modified: 
 + the interpreter words and the compiler words are stripped off
 + the kernel starts with routines for serial communication with the host computer
 + to improve speed literals are compiled inline (no doLit nor TRAP). 7 bytes, 6 cycles (inline) versus 3 bytes, 39 cycles (TRAP)
@@ -58,11 +58,14 @@ Files can be loaded on the command line (**./muf -f filename**) or from within m
 + **du**  ( a) inspects the target image on the host (and the target memory if in chat mode)
 + **dis** ( a, len) disassembles (a part of) the image on the host
 
-## Demo
-There is a simple timer countdown application for W1209-FD included (partly based on Thomas' logging thermostat program) that can be flashed:  
+## Demos
+There are several applications available, look in directory work.
+
+### Count-down timer for W1209
+There is a simple timer countdown application for W1209-FD included (partly based on Thomas' logging thermostat program).  
 + hookup a programming device (STLINKV2)
 + in muforth/mu : tools/fli.sh work/W1209-FD/timer/timer (this flashes the kernel + the application)
-Start muforth from muforth/mu
+Hookup an uart device and start muforth from muforth/mu
 + **./muf -f work/W1209-FD/timer/timer**
 + **bgs** ( to stop the background task, it would interfere with the chat process)
 + **chat**
@@ -72,4 +75,13 @@ Start muforth from muforth/mu
 
 To be able to chat again the background task has to be stopped: **bgs** 
 
-
+### Contrloler for a ADF4351 wideband synthesizer board
+The synthesizer board is controled by a rotary encoder with a push button. The settings are dispayed on an oled display.
++ hookup a programming device (STLINKV2)
++ in muforth/mu : tools/fli.sh workMINDEV/ADF/ADF (this flashes the kernel + the application)
+Hookup an uart device and start muforth from muforth/mu
++ **./muf -f work/MINDEV/ADF/ADF
++ **chat**
++ **cmdl,** ( to compile " -f work/ADF/ADF" to the end of flash)
++ **fl-int** ( to write the interrupt vectors and the boot vector)
++ **init** ( to start the application).
