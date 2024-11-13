@@ -25,9 +25,9 @@ Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas@TG954
 * download and install naken_asm  (https://github.com/mikeakohn/naken_asm.git)
 * download and install stm8flash  (https://github.com/vdudouyt/stm8flash)
 * start muforth from muforth/mu:  
-+ for MINDEV : &emsp; &emsp; &emsp; **./muf -f work/MINDEV/basic**
-+ for W1209-FD: &emsp; &emsp; **./muf -f work/W1209-FD/basic** 
-+ for STM8L051F3  &emsp; **./muf -f work/STM8L0151F3/basic**
++ for MINDEV : &emsp; &emsp; &emsp; **./muforth -f work/MINDEV/basic**
++ for W1209-FD: &emsp; &emsp; **./muforth -f work/W1209-FD/basic** 
++ for STM8L051F3  &emsp; **./muforth -f work/STM8L0151F3/basic**
 
 Now you can build your application. Save the flash image with "save-image binary-name", exit Muforth ("bye") and flash the saved image to the target with stm8flash and a st-link device. Or simply use tools/fli.sh file-name, this saves the binary to /tmp/image.bin and flashes this binary to the target using stm8flash.
 Once you have flashed the kernel to the target you can communicate with it in Muforth over uart: "chat" starts uart interaction.
@@ -51,7 +51,7 @@ Muforth keeps images of the target memories on the host. For STM8 there are thre
 The word **chat** starts chatting with the target and puts muforth in chatting mode. Now words are searched in the .target. dictionary and executed on the target if found. When a new definition is started ( with **:** ) muforth is put in __target-colon mode and the new word is added to the .target. dictionary. If you want the word to be compile-only you have to execute [r] , right after the finishing **;** , this puts the last created word in .target-runtime.
 
 ### Loading files
-Files can be loaded on the command line (**./muf -f filename**) or from within muforth with **ld filename**. The path has to be relative to muforth/mu or absolute.
+Files can be loaded on the command line (**./muforth -f filename**) or from within muforth with **ld filename**. The path has to be relative to muforth/mu or absolute.
 
 ### Examining memory
 + **_du** ( a) inspects host memory
@@ -66,7 +66,7 @@ There is a simple timer countdown application for W1209-FD included (partly base
 + hookup a programming device (STLINKV2)
 + in muforth/mu : tools/fli.sh work/W1209-FD/timer/timer (this flashes the kernel + the application)
 Hookup an uart device and start muforth from muforth/mu
-+ **./muf -f work/W1209-FD/timer/timer**
++ **./muforth -f work/W1209-FD/timer/timer**
 + **bgs** ( to stop the background task, it would interfere with the chat process)
 + **chat**
 + **cmdl,** ( to compile " -f work/W1209-FD/timer/timer" to the end of flash)
@@ -80,7 +80,7 @@ The synthesizer board is controled by a rotary encoder with a push button. The s
 + hookup a programming device (STLINKV2)
 + in muforth/mu : tools/fli.sh workMINDEV/ADF/ADF (this flashes the kernel + the application)
 Hookup an uart device and start muforth from muforth/mu
-+ **./muf -f work/MINDEV/ADF/ADF**
++ **./muforth -f work/MINDEV/ADF/ADF**
 + **chat**
 + **cmdl,** ( to compile " -f work/ADF/ADF" to the end of flash)
 + **fl-int** ( to write the interrupt vectors and the boot vector)
