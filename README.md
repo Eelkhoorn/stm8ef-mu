@@ -80,7 +80,7 @@ The synthesizer board is controled by a rotary encoder with a push button. The s
 + hookup a programming device (STLINKV2)
 + in muforth/mu : tools/fli.sh workMINDEV/ADF/ADF (this flashes the kernel + the application)
 Hookup an uart device and start muforth from muforth/mu
-+ **./muf -f work/MINDEV/ADF/ADF
++ **./muf -f work/MINDEV/ADF/ADF**
 + **chat**
 + **cmdl,** ( to compile " -f work/ADF/ADF" to the end of flash)
 + **fl-int** ( to write the interrupt vectors and the boot vector)
