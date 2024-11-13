@@ -14,7 +14,7 @@ $" work/STM8L051F3/kernel.mu4" $kernel.mu4
 
 -- make sym link (system is defined in muforth/src/file.c)
 z" /usr/bin/[ -h /tmp/target.con ] && rm /tmp/target.con" system
-z" /usr/bin/ln -s /home/pi/build/muforth-latest/mu/target/STM8/STM8L051F3.con /tmp/target.con" system
+z" /usr/bin/ln -s $(pwd)/mu/target/STM8/STM8L051F3.con /tmp/target.con" system
 
 ld target/STM8/chains.mu4
 ld target/common/memory.mu4
