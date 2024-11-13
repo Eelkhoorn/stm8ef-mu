@@ -7,10 +7,11 @@ Muforth (https://github.com/nimblemachines/muforth) is a forth console running i
 + No need to load temporary words like equates or additional compiling words in the target's RAM during compilation. All the equates and libraries can be loaded in Muforth and are available during compilation.
 + No restriction in namelength of words that otherwise would consume flash space, so we can use descriptive names to increase the readability of the program.
 + Assembling and disassembling is easy: Michael Kohn's great assembler/disassembler (https://www.mikekohn.net/micro/naken_asm.php) is integrated.
+
 The downside is that we need to keep track of what is flashed to the target if we ever want to modify the flash memory or chat with the taget. The muforth command "cmdl," flashes the command-line options used to start muforth to the end of the flash memory. To find out what is compiled to flash we do: HI . This types the command-line options we compiled in the target. The baudrate and flashend need to be set correctly though.
 
 
-###Stm8ef
+### Stm8ef
 Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas@TG9541 further developed the kernel, focussing on cheap and widely available development boards with stm8 processors.  (https://github.com/TG9541/stm8ef has all you need to install a self-hosted forth system on a stm8 device, and includes a thorough documentation). For Stm8ef-mu Thomas' forth.asm file is modified: 
 + the interpreter words and the compiler words are stripped off
 + the kernel starts with routines for serial communication with the host computer
@@ -24,9 +25,10 @@ Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas@TG954
 * download and install naken_asm  (https://github.com/mikeakohn/naken_asm.git)
 * download and install stm8flash  (https://github.com/vdudouyt/stm8flash)
 * start muforth from muforth/mu:  
-for MINDEV : &emsp; &emsp; &emsp; **./muf -f work/MINDEV/basic**
-for W1209-FD: &emsp; &emsp; **./muf -f work/W1209-FD/basic** 
-for STM8L051F3  &emsp; **./muf -f work/STM8L0151F3/basic**
++ for MINDEV : &emsp; &emsp; &emsp; **./muf -f work/MINDEV/basic**
++ for W1209-FD: &emsp; &emsp; **./muf -f work/W1209-FD/basic** 
++ for STM8L051F3  &emsp; **./muf -f work/STM8L0151F3/basic**
+
 Now you can build your application. Save the flash image with "save-image binary-name", exit Muforth ("bye") and flash the saved image to the target with stm8flash and a st-link device. Or simply use tools/fli.sh file-name, this saves the binary to /tmp/image.bin and flashes this binary to the target using stm8flash.
 Once you have flashed the kernel to the target you can communicate with it in Muforth over uart: "chat" starts uart interaction.
   
