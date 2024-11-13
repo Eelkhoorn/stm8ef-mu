@@ -187,7 +187,7 @@ CVAR vc		-- vertical cursor position    1, 3 or 5
 -- progam the interrupt and boot vectors:
 ' PC3-int INT_EXTI2 image-!
 ' PD4-int INT_EXTI3 image-!
-' IPC 'BOOT image-!
+' init 'BOOT image-!
 
 ram
 
@@ -197,7 +197,7 @@ __host
 : fl-int
    \t PD4-int  \m INT_EXTI3 !flash
    \t PC3-int  \m INT_EXTI2 !flash
-   \t IPC      \m 'BOOT     !flash
+   \t init      \m 'BOOT     !flash
 ;
 
 cr ." Don't forget to program the EEPROM: fle" cr
