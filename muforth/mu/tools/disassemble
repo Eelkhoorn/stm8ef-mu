@@ -38,24 +38,24 @@ addr4 in B {cell=B[addr4]; cy=0; $2=gensub(/..$/,"\\1",1,cell); $3=gensub(/^../,
 $NF="" {}
 $6~/^[a-f0-9]{2}$/ {
         printf("$%x\t%s %s %s %s %s ",$1+offset,$2,$3,$4,$5,$6);$1=$2=$3=$4=$5=$6="";
-        printf("%40s%5s\n", $0,cy);cycles();next}
+        printf("%40s%5s\n", $0,cy);cycles();add=5;next}
 $5~/^[a-f0-9]{2}$/ {
         printf("$%x\t%s %s %s %s ",$1+offset,$2,$3,$4,$5);$1=$2=$3=$4=$5="";
-        printf("%43s%5s\n", $0,cy);cycles();next}
+        printf("%43s%5s\n", $0,cy);cycles();add=4;next}
 $4~/^[a-f0-9]{2}$/ {
         printf("$%x\t%s %s %s ",$1+offset,$2,$3,$4);$1=$2=$3=$4="";
-        printf("%46s%5s\n", $0,cy);cycles();next}
+        printf("%46s%5s\n", $0,cy);cycles();add=3;next}
 $3~/^[a-f0-9]{2}$/ {
         printf("$%x\t%s %s ",$1+offset,$2,$3);$1=$2=$3="";
-        printf("%49s%5s\n", $0,cy);cycles();next}
+        printf("%49s%5s\n", $0,cy);cycles();add=2;next}
 $3!~/^[a-f0-9]{2}$/ {
         printf("$%x\t%s ",$1+offset,$2);$1=$2="";
-        printf("%52s%5s\n", $0,cy);cycles()}
+        printf("%52s%5s\n", $0,cy);cycles();add=1}
 
 # print byte count and cycle count
 END {if (maxcy>0) {
-        printf( "%4d bytes%58d-%2d cycles\n", addr,mincy,mincy+maxcy);}
-        else { printf( "%4d bytes%58d cycles\n", addr,mincy)}
+        printf( "%4d bytes%58d-%2d cycles\n", addr+add,mincy,mincy+maxcy);}
+        else { printf( "%4d bytes%58d cycles\n", addr+add,mincy)}
 }
 # count cycles total
 function cycles() {
