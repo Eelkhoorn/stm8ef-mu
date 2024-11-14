@@ -12,7 +12,7 @@ The downside is that we need to keep track of what is flashed to the target if w
 
 
 ### Stm8ef
-Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas@TG9541 further developed the kernel, focussing on cheap and widely available development boards with stm8 processors.  His site (https://github.com/TG9541/stm8ef) has all you need to install a self-hosted forth system on a stm8 device, and includes a thorough documentation. For stm8ef-mu Thomas' forth.asm file is modified: 
+Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas @TG9541 further developed the kernel, focussing on cheap and widely available development boards with stm8 processors.  His site (https://github.com/TG9541/stm8ef) has all you need to install a self-hosted forth system on a stm8 device, and includes a thorough documentation. For stm8ef-mu Thomas' forth.asm file is modified: 
 + the interpreter words and the compiler words are stripped off
 + the kernel starts with routines for serial communication with the host computer
 + to improve speed literals are compiled inline (no doLit nor TRAP). 7 bytes, 6 cycles (inline) versus 3 bytes, 39 cycles (TRAP)
@@ -30,7 +30,7 @@ Stm8ef is a forth system originally developped by Chen-Hanson Ting. Thomas@TG954
 + for STM8L051F3  &emsp; **./muforth -f work/STM8L0151F3/basic**
 
 Now you can build your application. Save the flash image with "save-image binary-name", exit Muforth ("bye") and flash the saved image to the target with stm8flash and a st-link device. Or simply use tools/fli.sh file-name, this saves the binary to /tmp/image.bin and flashes this binary to the target using stm8flash.
-Once you have flashed the kernel to the target you can communicate with it in Muforth over uart: "chat" starts uart interaction.
+Once you have flashed the kernel to the target you can communicate with it in muforth over uart: "chat" starts uart interaction.
   
 ## Muforth
 Unfortunately muforth has little documentation, although the .mu4 files are sometimes extensively commented. Here is a brief explanation to get you started:
