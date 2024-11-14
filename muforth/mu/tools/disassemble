@@ -54,14 +54,14 @@ $3!~/^[a-f0-9]{2}$/ {
 
 # print byte count and cycle count
 END {if (maxcy>0) {
-        printf( "%4d bytes%58d-%2d cycles\n", addr+add,mincy,mincy+maxcy);}
+        printf( "%4d bytes%58d-%2d cycles\n", addr+add,mincy,maxcy);}
         else { printf( "%4d bytes%58d cycles\n", addr+add,mincy)}
 }
 # count cycles total
 function cycles() {
         mincy+=substr(cy,1);
         if (cy ~/-/) {
-                maxcy+=substr(cy,3,2) - 1;
+                maxcy+=substr(cy,3,2);
         }
 }
 # find the "offset" column
