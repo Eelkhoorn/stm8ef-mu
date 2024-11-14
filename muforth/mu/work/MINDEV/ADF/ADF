@@ -48,7 +48,7 @@ CVAR Pow
 ;
 -- $9D9D , $9D9D , $9D c, 
 
--- set RFdiv
+-- calculate Fdv, Fvco, Int, Frac and Mod
 : Calc ( -- )
 	6 0 $400			-- 67108864 (=$1.0000.0000/64)
 	begin
