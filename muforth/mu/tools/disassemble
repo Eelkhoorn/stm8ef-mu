@@ -61,7 +61,7 @@ END {if (maxcy>0) {
 function cycles() {
         mincy+=substr(cy,1);
         if (cy ~/-/) {
-                maxcy+=substr(cy,3,2);
+                maxcy+=substr(cy,3,2) - 1;
         }
 }
 # find the "offset" column

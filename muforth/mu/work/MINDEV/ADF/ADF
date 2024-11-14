@@ -1,5 +1,5 @@
 loading work/MINDEV/ADF/ADF
--- Register calculaion for ADF4351, 1kHz resolution, range 33 - 4294.9 MHz 
+-- Register calculaion for ADF4351, range 33 - 4294.9 MHz 
 -- Connect PD2 to LE, C5 (CLK) to CLK and C6 to DAT.
 
 ld target/STM8/MINDEV.mu4
@@ -111,12 +111,6 @@ ld work/MINDEV/ADF/ADF+
 
 comment ===
 
--- RFOUT = [INT + (FRAC/MOD)] × (fPFD/RF Divider)
--- RFin = 25 MHz
--- Fpfd = RFin /8 = 3.125 MHz	(8 in reg. 2: RF reference division factor (1 to 1023))
--- Mod = Fpfd / (res x 2^fdv)
--- res = fPFD/(MOD x 2^fdv)
-
 RFOUT = [INT + (FRAC/MOD)] × (fPFD/RF Divider)
 resolution = fPFD/(MOD x RF Divider)
 fPFD = RFin/
@@ -128,22 +122,4 @@ Fdv		R4	20-22
 OE		R4	5		output enable 0|1
 OP		R4	3-4		output power  0..3
 
-Check with Cinergy TstickRC and GQRX:
-error 26.6 kHz @ 880 MHz	1:33080
-error 1460 Hz @ 55 MHz		
-error 2600 Hz @94.5 Mhz		1:36350
-error 2930 Hz @ 100 MHz		1:34130
-
-: K ( u -- d )
-	#1000 um*
-;
-
-: M ( u -- d )
-	*k #1000 d*
-;
-
--- set output freq
-: so ( n n n -- )
-	>R >R M R> k D+ R> 0 D+ Fro 2!
-;
 ===
