@@ -127,17 +127,17 @@ target
 
 meta
 
-00 constant USREMIT
-02 constant USRQKEY
-04 constant USR_5
-05 constant USR_6
-06 constant MP
-08 constant USRHLD
-0A constant XREG0
-0B constant XREG1
-0C constant XREG2
-0D constant XREG3
-0E constant BITAT
+0 constant USREMIT
+2 constant USRQKEY
+4 constant USR_5
+5 constant USR_6
+6 constant MP
+8 constant USRHLD
+A constant XREG0
+B constant XREG1
+C constant XREG2
+D constant XREG3
+E constant BITAT
 18 constant BITSTO
 1D constant OUTPUTS
 1F constant KEYREPET

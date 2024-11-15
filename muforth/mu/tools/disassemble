@@ -9,7 +9,7 @@ cat /tmp/target.con /tmp/target /tmp/target-runtime >/tmp/xtokens
 sed -i 's/, /,/' /tmp/out.txt
 
 # offset is first argument of disassemble command
-awk -v offset="0x$1" --non-decimal-data '
+awk --non-decimal-data '
 BEGIN {Argind=0; printf("\n\n");getline nextline < "/tmp/out.txt"}
 
 # Check for empty file. If there are no ?branch instructions nop.txt is empty
@@ -18,50 +18,51 @@ ARGIND > Argind + 1 {
         zerofile(ARGV[Argind], Argind) }
 ARGIND != Argind { Argind = ARGIND }
 
-FNR==NR { A[tolower($1)]=$2 ; if ($1~/^.0/) A[gensub(/\(^.\)./,/\1/,1,tolower($1))]=$2 ;iA ++ ; next}
+FNR==NR { A[tolower($1)]=$2 ; if ($1~/^\$0./) A[gensub(/0*/,"",1,tolower($1))]=$2 ;iA ++ ; next}
 NR==FNR+iA && empty_file==0 { B[$1]=$2; next}
 # get the addres of the next line, index of getline is incremented in BEGIN section:
-{ getline nextline < "/tmp/out.txt" ;split(nextline,a);addr2=a[1]+offset}
+{ getline nextline < "/tmp/out.txt" ;split(nextline,a);addr2=a[1]}
 
 FNR<14 {next}
+FNR==14 { addr0 = $1}
 skip==-1 { skip=0;next}
 calc()
-addr=$1 {}
-addr4=sprintf("$%x",$1+offset) {}
+{addr=$1;qq=gensub(/0x0*/,"$",1,$1);addr1=gensub(/:/,"",1,qq)}
+# addr4=sprintf("$%x",$1+offset) {}
 cy=$NF {}
 {for (i=3;i<NF;i++) {
      if ($i in A) $i=A[$i]
      if (gensub(/,.*$/,"",1,$i) in A) $i=A[gensub(/,.*$/,"",1,$i)]gensub(/^.{1,5}/,"",1,$i)
      if (gensub(/^.*,/,"",1,$i) in A) $i=gensub(/,.*$/,"",1,$i)","A[gensub(/^.*,/,"",1,$i)] }}
-addr4 in A {print A[addr4]}
-addr4 in B {cell=B[addr4]; cy=0; $2=gensub(/..$/,"\\1",1,cell); $3=gensub(/^../,"\\1",1,cell);$0=$1" "$2" "$3" branch addr: $"cell" "cy; skip=-1;}
+addr1 in A {print A[addr1]}
+$1 in B {cell=B[$1]; cy=0; $2=gensub(/..$/,"\\1",1,cell); $3=gensub(/^../,"\\1",1,cell);$0=$1" "$2" "$3" branch addr: $"cell" "cy; skip=-1;}
 $NF="" {}
 $6~/^[a-f0-9]{2}$/ {
-        printf("$%x\t%s %s %s %s %s ",$1+offset,$2,$3,$4,$5,$6);$1=$2=$3=$4=$5=$6="";
+        printf("$%x\t%s %s %s %s %s ",$1,$2,$3,$4,$5,$6);$1=$2=$3=$4=$5=$6="";
         printf("%40s%5s\n", $0,cy);cycles();add=5;next}
 $5~/^[a-f0-9]{2}$/ {
-        printf("$%x\t%s %s %s %s ",$1+offset,$2,$3,$4,$5);$1=$2=$3=$4=$5="";
+        printf("$%x\t%s %s %s %s ",$1,$2,$3,$4,$5);$1=$2=$3=$4=$5="";
         printf("%43s%5s\n", $0,cy);cycles();add=4;next}
 $4~/^[a-f0-9]{2}$/ {
-        printf("$%x\t%s %s %s ",$1+offset,$2,$3,$4);$1=$2=$3=$4="";
+        printf("$%x\t%s %s %s ",$1,$2,$3,$4);$1=$2=$3=$4="";
         printf("%46s%5s\n", $0,cy);cycles();add=3;next}
 $3~/^[a-f0-9]{2}$/ {
-        printf("$%x\t%s %s ",$1+offset,$2,$3);$1=$2=$3="";
+        printf("$%x\t%s %s ",$1,$2,$3);$1=$2=$3="";
         printf("%49s%5s\n", $0,cy);cycles();add=2;next}
 $3!~/^[a-f0-9]{2}$/ {
-        printf("$%x\t%s ",$1+offset,$2);$1=$2="";
+        printf("$%x\t%s ",$1,$2);$1=$2="";
         printf("%52s%5s\n", $0,cy);cycles();add=1}
 
 # print byte count and cycle count
-END {if (maxcy>0) {
-        printf( "%4d bytes%58d-%2d cycles\n", addr+add,mincy,maxcy);}
-        else { printf( "%4d bytes%58d cycles\n", addr+add,mincy)}
+END {if (difcy>0) {
+        printf( "%4d bytes%58d-%2d cycles\n", addr+add-addr0,mincy,mincy+difcy);}
+        else { printf( "%4d bytes%58d cycles\n", addr+add-addr0,mincy)}
 }
 # count cycles total
 function cycles() {
         mincy+=substr(cy,1);
         if (cy ~/-/) {
-                maxcy+=substr(cy,3,2);
+                difcy+=substr(cy,3,2)-substr(cy,1);
         }
 }
 # find the "offset" column

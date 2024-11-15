@@ -248,7 +248,7 @@ variable wh variable wl
 ;
 
 -- restore masked bytes
-: >nop 
+: >nop ( n)
 	arr m !
 	begin
 		m* m* hilo>
@@ -260,11 +260,13 @@ variable wh variable wl
 -- Strings to call shell commands
 $" tools/disassemble 0000" dis_cmd
 $" /usr/bin/dd count=0000 if=/tmp/region.bin of=/tmp/cut.bin bs=1 2>/dev/null" dd_cmd
+$" naken_util -disasm -STM8 -address 0x0000 /tmp/cut.bin  > /tmp/out.txt && tools/disassemble" naken_dis_cmd
 
-: reset_dis_cmd 
-   " tools/disassemble 0000" dis_cmd swap cmove ;
+: reset_naken_dis_cmd 
+   " naken_util -disasm -STM8 -address 0x0000" naken_dis_cmd swap cmove ;
+   
 : reset_dd_cmd   ( we use dd to trim the saved region)
-   " /usr/bin/dd count=0000 if=/tmp/region.bin of=/tmp/cut.bin bs=1 2>/dev/null" dd_cmd swap cmove ;
+   " /usr/bin/dd count=0000" dd_cmd swap cmove ;
 
 -- export word addresses
 : export_words
@@ -277,13 +279,13 @@ $" /usr/bin/dd count=0000 if=/tmp/region.bin of=/tmp/cut.bin bs=1 2>/dev/null" d
         radix preserve hex
         export_words
         sep preserve -sep
-        2dup
+        2dup 
         z" /tmp/region.bin" saveregion
-        decimal 
+        reset_naken_dis_cmd  
+        swap (.) 4 over - naken_dis_cmd #36 + + swap cmove 
+        decimal
         reset_dd_cmd (.) 4 over - dd_cmd #18 + + swap cmove dd_cmd system
-        hex
-        z" /usr/local/bin/naken_util -disasm -STM8 /tmp/cut.bin  > /tmp/out.txt" system 
-        reset_dis_cmd (.) 4 over - dis_cmd #18 + + swap cmove dis_cmd system 
+        naken_dis_cmd system 
         >nop ;
 
 -- ===============================================================

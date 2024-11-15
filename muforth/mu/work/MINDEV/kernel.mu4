@@ -124,15 +124,15 @@ target
 
 meta
 
-00 constant USREMIT
-02 constant USRQKEY
-04 constant MP
-06 constant USRHLD
-08 constant XREG0
-09 constant XREG1
-0A constant XREG2
-0B constant XREG3
-0C constant BITAT
+0 constant USREMIT
+2 constant USRQKEY
+4 constant MP
+6 constant USRHLD
+8 constant XREG0
+9 constant XREG1
+A constant XREG2
+B constant XREG3
+C constant BITAT
 16 constant BITSTO
 1B constant OUTPUTS
 1D constant BGADDR

@@ -2,7 +2,8 @@
 
 
 BEGIN{ print "meta\n"}
-$0~/= RAMPOOL$/&&$1~/^00/ {print gensub(/^0000/,"",1,$1" constant "$3)}
+$0~/= RAMPOOL$/&&$1~/^00000/ {print gensub(/^00000/,"",1,$1" constant "$3);next}
+$0~/= RAMPOOL$/&&$1~/^0000/ {print gensub(/^0000/,"",1,$1" constant "$3);next}
 $0~/TBOOT:/ {printf "%x%s\n", strtonum("0x"$1)+1, " constant 'BOOT"}
 $0~/LED7LAST =/&&$1~/^00/ {print gensub(/^0000/,"",1,$1" constant "$3)}
 
