@@ -3,12 +3,12 @@
 #  to reflect the addresses of equates and words of the target.
 
 # concatinate "target.con", "target" and "target-runtime" to "xtokens"
-cat /tmp/target.con /tmp/target /tmp/target-runtime >/tmp/xtokens
+cat /tmp/target.con /tmp/target /tmp/target-runtime >/tmp/xtokens.txt
 
 # remove space after ","
 sed -i 's/, /,/' /tmp/out.txt
 
-# offset is first argument of disassemble command
+# replace adresses with names
 awk --non-decimal-data '
 BEGIN {Argind=0; ;empty_file=0;printf("\n\n");getline nextline < "/tmp/out.txt"}
 
@@ -17,26 +17,45 @@ ARGIND > Argind + 1 {
     for (Argind++; Argind < ARGIND; Argind++)
         zerofile(ARGV[Argind], Argind) }
 ARGIND != Argind { Argind = ARGIND }
-# fill array with (addres,names) from /tmp/xtokens
+
+# process /tmp/xtokens.txt
+# fill array with (addres,names) from /tmp/xtokens.txt
 FNR==NR { A[tolower($1)]=$2 ; if ($1~/^\$0./) A[gensub(/0*/,"",1,tolower($1))]=$2 ;iA ++ ;next}
+
+# process /tmp/nop.txt
+# fill array B with addresses of branch instructions and respective branch addresses
 NR==FNR+iA && empty_file==0 { B[$1]=$2;print $1,B[$1];  next}
-# get the addres of the next line, index of getline is incremented in BEGIN section:
+
+# process /tmp/out.txt
+# addr2: get the addres of the next line, index of getline is incremented in BEGIN section:
 { getline nextline < "/tmp/out.txt" ;split(nextline,a);addr2=a[1]}
 
+# skip header of naken_util
 FNR<14 {next}
+
+# addr0 is start address
 FNR==14 { addr0 = $1}
+
+# skip 1 instruction to display branch addresses properly
 skip==-1 { skip=0;next}
+
 calc()
+
+# strip "0x0" and ":" in out.txt
 {addr=$1;qq=gensub(/0x0*/,"$",1,$1);addr1=gensub(/:/,"",1,qq)}
-# addr4=sprintf("$%x",$1+offset) {}
-cy=$NF {}
+
+{cy=$NF; $NF="" }
 {for (i=3;i<NF;i++) {
      if ($i in A) $i=A[$i]
      if (gensub(/,.*$/,"",1,$i) in A) $i=A[gensub(/,.*$/,"",1,$i)]gensub(/^.{1,5}/,"",1,$i)
      if (gensub(/^.*,/,"",1,$i) in A) $i=gensub(/,.*$/,"",1,$i)","A[gensub(/^.*,/,"",1,$i)] }}
+
+# start of word: print word name
 addr1 in A {print A[addr1]}
+
+# ?branch instructions
 addr1 in B {cell=B[addr1]; cy=0; $2=gensub(/..$/,"\\1",1,cell); $3=gensub(/^../,"\\1",1,cell);$0=$1" "$2" "$3" branch addr: $"cell" "cy; skip=-1;}
-$NF="" {}
+
 $6~/^[a-f0-9]{2}$/ {
         printf("$%x\t%s %s %s %s %s ",$1,$2,$3,$4,$5,$6);$1=$2=$3=$4=$5=$6="";
         printf("%40s%5s\n", $0,cy);cycles();add=5;next}
@@ -81,7 +100,6 @@ function calc() {
                 len=length($i) - 9;
                 OFFSET=substr($0,pos+7,len);
                 addr3=sprintf("$%x",addr2+OFFSET);
-#                print "pos: ",pos," len: ",len, " OFFSET: ",OFFSET ," addr2: ",addr2," addr3: ", addr3
                 if (addr3 in A)  addr3=A[addr3];
                 $(i-1)=addr3;
         }
@@ -90,4 +108,4 @@ function zerofile(i,j) {
         empty_file=-1 ;
 }
         
-'  /tmp/xtokens /tmp/nop.txt /tmp/out.txt 
+'  /tmp/xtokens.txt /tmp/nop.txt /tmp/out.txt 
