@@ -275,8 +275,8 @@ $" naken_util -disasm -STM8 -address 0x0000 /tmp/cut.bin  > /tmp/out.txt && tool
 
 -- system is defined in muforth/src/file.c
 : dis ( addr n) 
-        2dup \m (?branch) @ nop>
         radix preserve hex
+        2dup \m (?branch) @ nop>
         export_words
         sep preserve -sep
         2dup 
