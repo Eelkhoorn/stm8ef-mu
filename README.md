@@ -64,7 +64,7 @@ There are several applications available, look in directory work.
 ### Count-down timer for W1209
 There is a simple timer countdown application for W1209-FD included (partly based on Thomas' logging thermostat program).  
 + hookup a programming device (STLINKV2)
-+ in muforth/mu : tools/fli.sh work/W1209-FD/timer/timer (this flashes the kernel + the application)
++ in muforth/mu : tools/fli.sh -f work/W1209-FD/timer/timer (this flashes the kernel + the application)
 Hookup an uart device and start muforth from muforth/mu
 + **./muforth -f work/W1209-FD/timer/timer**
 + **bgs** ( to stop the background task, it would interfere with the chat process)
@@ -78,7 +78,7 @@ To be able to chat again the background task has to be stopped: **bgs**
 ### Contrloler for a ADF4351 wideband synthesizer board
 The synthesizer board is controled by a rotary encoder with a push button. The settings are dispayed on an oled display.
 + hookup a programming device (STLINKV2)
-+ in muforth/mu : tools/fli.sh workMINDEV/ADF/ADF (this flashes the kernel + the application)
++ in muforth/mu : tools/fli.sh -f workMINDEV/ADF/ADF (this flashes the kernel + the application)
 Hookup an uart device and start muforth from muforth/mu
 + **./muforth -f work/MINDEV/ADF/ADF**
 + **chat**
